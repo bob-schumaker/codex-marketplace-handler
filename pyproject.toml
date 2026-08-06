@@ -5,8 +5,14 @@ description = "Package and publish a Codex personal local marketplace."
 authors = [{ name = "Anonymous" }]
 requires-python = ">=3.11,<4.0"
 
+[project.scripts]
+marketplace-publisher = "marketplace_publisher.__main__:main"
+
 [tool.poetry]
 packages = [{ include = "marketplace_publisher", from = "src" }]
+include = [
+  { path = "src/marketplace_publisher/resources/**", format = ["sdist", "wheel"] },
+]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0"
