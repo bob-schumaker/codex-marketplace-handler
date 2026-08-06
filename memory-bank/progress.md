@@ -10,10 +10,10 @@
   integration test are implemented and passing.
 - A tested Copier template creates custom-named installer repositories with no
   embedded marketplace payload, memory bank, or specifications.
-- The real `bob-schumaker-codex-support` payload is embedded: 15 catalog
-  entries, 15 plugin directories, and 639 regular plugin files.
-- The actual built wheel installed and published all 15 embedded plugins into
-  an isolated local marketplace root.
+- This source repository retains only empty resource-package markers; a final
+  product repository supplies its own marketplace catalog and plugin trees.
+- A representative 15-plugin payload was built, installed, and published into
+  an isolated local marketplace root before its source-repo cleanup.
 - Repository-local memory-bank routing and core context files are present.
 
 ## In flight
@@ -22,15 +22,15 @@
 
 ## Remaining
 
-- Publish a release when desired.
-- Refresh the embedded marketplace intentionally when its source changes.
+- Create a product repository with Copier or add a selected payload here when a
+  release is explicitly desired.
 
 ## Risks and follow-ups
 
 - Keep embedded `source.path` values relative to each local marketplace root.
 - Preserve the spec's staged-copy, state-manifest, and no-cross-marketplace
   guarantees during implementation.
-- Do not change the embedded marketplace or its plugin selection without an
-  explicit release decision.
+- Do not add a marketplace or plugin selection to this source repository
+  without an explicit release decision.
 - Keep the Copier template's source tree aligned with publisher changes; its
   rendered project has its own package name and console-script contract.

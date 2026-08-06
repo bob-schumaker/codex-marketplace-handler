@@ -2,8 +2,8 @@
 
 ## Current focus
 
-The embedded `bob-schumaker-codex-support` marketplace release payload is
-complete and verified.
+The publisher implementation and Copier template are complete. This source
+repository intentionally contains no embedded marketplace payload.
 
 ## Current status
 
@@ -14,19 +14,17 @@ complete and verified.
   self-contained wheel verification are implemented through TDD.
 - Done: a Copier template renders a custom-named, payload-free marketplace
   installer without this repository's memory-bank or specification artifacts.
-- Done: all 15 catalog-selected plugins from the personal
-  `bob-schumaker-codex-support` marketplace are embedded as package data.
-- Done: an installed wheel published the real embedded payload into an isolated
-  home directory.
+- Done: an imported 15-plugin payload was verified in a built wheel and then
+  removed; source control retains only empty resource-package markers.
 - Done: local marketplace layout is confirmed under
   `~/.codex/local-marketplaces/<marketplace-name>/`.
-- Done: package-resource exclusions keep Ruff and Rumdl from reformatting
-  imported plugin payload files.
+- Done: package-resource exclusions keep Ruff and Rumdl from reformatting a
+  future imported plugin payload.
 
 ## Next steps
 
-1. Use `poetry run python scripts/import_marketplace.py
-   bob-schumaker-codex-support` to refresh the embedded payload intentionally.
-2. Build and publish the verified distribution when a release is desired.
+1. In a product repository, use `poetry run python scripts/import_marketplace.py
+   <marketplace-name>` to add a release payload intentionally.
+2. Build and publish the resulting payload-bearing distribution when desired.
 3. Use `poetry run copier copy copier-template <destination>` when a clean,
    custom-named installer repository is needed.

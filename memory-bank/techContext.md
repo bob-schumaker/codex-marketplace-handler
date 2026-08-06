@@ -15,7 +15,8 @@
 - Copier is a development dependency. `copier-template/copier.yml` derives a
   Python package name from a custom project slug and renders the installer.
 - `rumdl.toml` and Ruff's `extend-exclude` omit package resources from project
-  formatting checks so embedded third-party plugin trees remain byte-preserved.
+  formatting checks so a product's imported third-party plugin trees remain
+  byte-preserved.
 
 ## Verification expectations
 
@@ -25,6 +26,6 @@ wheel-installed resource access without the original imported marketplace.
 Use RED, GREEN, and REFACTOR for every behavior-changing implementation task,
 with documented exceptions only when no repeatable automated check is feasible.
 
-The final release verification also builds the actual payload-bearing wheel,
-installs it with `pip --no-deps` into a temporary virtual environment, and runs
-`marketplace-publisher --json` with an isolated `HOME`.
+For a release, build the payload-bearing wheel after importing its selected
+marketplace, install it with `pip --no-deps` into a temporary virtual
+environment, and run `marketplace-publisher --json` with an isolated `HOME`.
