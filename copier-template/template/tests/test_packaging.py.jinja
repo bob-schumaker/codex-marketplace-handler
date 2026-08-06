@@ -70,8 +70,7 @@ def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) ->
             assert (
                 archive.read(entry_points).decode().strip()
                 == (
-                    "[console_scripts]\n"
-                    "{{ project_slug }}={{ package_name }}.__main__:main\n"
+                    "[console_scripts]\n{{ project_slug }}={{ package_name }}.__main__:main\n"
                 ).strip()
             )
         run([sys.executable, "-m", "venv", str(environment)], cwd=repository)

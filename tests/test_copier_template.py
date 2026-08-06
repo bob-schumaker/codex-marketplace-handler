@@ -53,3 +53,19 @@ def test_copier_template_renders_a_custom_marketplace_installer(tmp_path: Path) 
     )
 
     assert completed.returncode == 0, completed.stderr
+
+    publisher_tests = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/test_publisher.py"],
+        check=False,
+        text=True,
+        capture_output=True,
+        cwd=destination,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(destination / "src"),
+        },
+    )
+
+    assert publisher_tests.returncode == 0, (
+        publisher_tests.stdout + publisher_tests.stderr
+    )
