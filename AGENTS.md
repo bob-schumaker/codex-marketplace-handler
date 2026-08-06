@@ -18,8 +18,9 @@ Repository operating instructions for coding agents.
 
 - Purpose: package and publish an embedded Codex local marketplace safely.
 - Stack: Python, Poetry, and a `src/` package layout.
-- Key architecture: package resources are the source for the marketplace and
-  plugins; publishing merges only a same-name personal marketplace.
+- Key architecture: the published package carries the complete selected
+  marketplace catalog and plugin trees; publishing never reads the source
+  marketplace and merges only a same-name target marketplace.
 
 ## Build, test, and quality checks
 
