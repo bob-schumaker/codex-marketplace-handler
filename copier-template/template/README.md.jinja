@@ -1,0 +1,25 @@
+# {{ project_name }}
+
+This repository packages one Codex personal local marketplace into a Python
+distribution. It starts without marketplace payload data.
+
+## Add a marketplace payload
+
+Import all plugins from a local marketplace:
+
+```sh
+poetry run python scripts/import_marketplace.py MARKETPLACE_NAME
+```
+
+Or import selected plugins:
+
+```sh
+poetry run python scripts/import_marketplace.py MARKETPLACE_NAME PLUGIN_NAME [...]
+```
+
+The resulting `resources/marketplace.json` and plugin directories are the
+complete release payload. Build and install the distribution, then run:
+
+```sh
+{{ project_slug }} [--dry-run] [--force] [--json] [--verbose]
+```
