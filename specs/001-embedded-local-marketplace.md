@@ -2,29 +2,61 @@
 
 ## Goal
 
-Build a Poetry-managed Python project that ships a Codex local marketplace in
-the installed package and exposes a default executable that publishes that
-marketplace into the user's personal Codex marketplace.
+Build a Poetry-managed Python project that packages an imported Codex personal
+local marketplace and publishes it back to the user's personal Codex
+marketplace.
 
-The distribution's canonical marketplace name is `marketplace-publisher`.
-The executable must look for the personal marketplace with that exact name,
-merge the embedded marketplace into it when it exists, and otherwise install
-the embedded marketplace unchanged.
+The embedded marketplace's top-level `name` is the authoritative target name.
+The publisher discovers that name from its packaged `marketplace.json`, merges
+the package's contents into an installed marketplace with the same name, and
+installs the marketplace unchanged when the personal marketplace file does not
+exist.
 
 ## Scope
 
-- Use Poetry and a `src/` package layout.
-- Distribute the marketplace JSON and every referenced local plugin directory
-  as package data; it must work from an installed wheel, not only from a source
+- Use Python 3.11, Poetry, and a `src/` package layout.
+- Use anonymous package metadata and do not publish repository metadata while
+  the repository remains private.
+- Use Ruff for Python linting and formatting, Rumdl for Markdown linting and
+  formatting, and pytest for tests.
+- Distribute the marketplace JSON and every selected local plugin directory as
+  package data; it must work from an installed wheel, not only from a source
   checkout.
-- Register a console script as the package's default entry point. The command
-  name should be `marketplace-publisher` and call
+- Register `marketplace-publisher` as the runtime console script, mapped to
   `marketplace_publisher.__main__:main`.
-- Target Codex's personal marketplace location:
+- Register `marketplace-publisher-import` as a repository-development console
+  script that imports a marketplace payload into package resources.
+- Support only Codex's personal local marketplace:
   `~/.agents/plugins/marketplace.json`, with local plugin files rooted at
   `~/.codex/plugins/`.
-- Use `importlib.resources` to read the bundled marketplace and plugins so
-  package-resource access is independent of the current working directory.
+- Use `importlib.resources` to read packaged resources so runtime behavior is
+  independent of the current working directory.
+
+## Importing package data
+
+The repository-local command has this interface:
+
+```sh
+poetry run marketplace-publisher-import MARKETPLACE_NAME [PLUGIN_NAME ...]
+```
+
+The command reads the personal marketplace document at
+`~/.agents/plugins/marketplace.json` and requires its top-level `name` to equal
+`MARKETPLACE_NAME`. It validates the document and copies it, plus the chosen
+plugin directories, into `src/marketplace_publisher/resources/`.
+
+- With no plugin names, import every marketplace entry.
+- With plugin names, retain only those entries in the embedded
+  `marketplace.json` and copy only their directories.
+- Fail without changing package resources if a requested plugin is absent,
+  entries are duplicated or malformed, a source is not a safe local
+  `./.codex/plugins/...` path, a plugin directory is missing, or an embedded
+  resource replacement would traverse a symlink.
+- Replace the existing embedded payload as one operation. The imported
+  marketplace JSON and copied plugin directories must agree exactly.
+
+The command is intentionally a development tool: it does not publish to Codex,
+does not invoke plugin code, and does not mutate the source marketplace.
 
 ## Embedded package layout
 
@@ -32,6 +64,7 @@ the embedded marketplace unchanged.
 src/marketplace_publisher/
   __main__.py
   publisher.py
+  importer.py
   resources/
     marketplace.json
     plugins/
@@ -40,98 +73,165 @@ src/marketplace_publisher/
         ...
 ```
 
-`resources/marketplace.json` is a valid Codex marketplace document whose
-top-level `name` is `marketplace-publisher`. Its local plugin entries use
-`./.codex/plugins/<plugin-name>` paths relative to the personal marketplace
+`resources/marketplace.json` is a valid Codex marketplace document. Its
+top-level `name` determines the runtime target name. Its local plugin entries
+use `./.codex/plugins/<plugin-name>` paths relative to the personal marketplace
 root (`~`). The embedded resource must pass the same structural validation
-imposed on an existing marketplace before any user files are changed.
+imposed on an installed marketplace before any user files are changed.
 
 ## Publishing behavior
 
-1. Load and validate the embedded marketplace. Reject malformed JSON, a
-   mismatched marketplace name, duplicate plugin names, non-local sources, or
-   local paths that are not safe `./.codex/plugins/...` relative paths.
+1. Load and validate the embedded marketplace. Reject malformed JSON, a missing
+   or invalid marketplace name, duplicate plugin names, non-local sources, or
+   paths that are not safe `./.codex/plugins/...` relative paths.
 2. Read `~/.agents/plugins/marketplace.json` if it exists.
    - If it is missing, create parent directories, copy all bundled plugin
      directories into `~/.codex/plugins/`, and write the embedded marketplace
      document unchanged.
-   - If it exists but its top-level `name` differs, leave it untouched, report
-     the conflict, and exit non-zero. A marketplace JSON file can represent
-     only one named marketplace, so silently replacing or co-mingling another
-     marketplace would be unsafe.
-   - If it exists with the same name, validate it and merge it as specified
-     below.
-3. Copy each embedded plugin to the destination named by its `source.path`.
-   The destination is `~/.codex/plugins/<plugin-name>` for the required
-   embedded layout. Copy recursively, replacing only files supplied by that
-   plugin; do not delete destination files that are absent from the embedded
-   version.
-4. Persist the resulting JSON atomically: serialize to a temporary file in the
-   destination directory, flush and fsync it, then replace `marketplace.json`.
-   Apply restrictive owner-only file permissions where the platform supports
-   them. If copying or writing fails, retain the previous marketplace JSON and
-   return a useful error.
+   - If its top-level `name` differs from the embedded target name, leave it
+     untouched, report the conflict, and exit non-zero. A personal marketplace
+     JSON file represents one marketplace; support for other marketplace
+     locations is out of scope.
+   - If it has the same name, validate it and merge it as specified below.
+3. Before changing an existing embedded plugin destination, check its publisher
+   state manifest. If a previously published, package-owned file is missing or
+   has a different SHA-256 digest, fail before mutation unless `--force` is
+   supplied. If the destination exists without publisher state, treat it as an
+   unmanaged conflict and likewise require `--force`.
+4. Copy each embedded plugin to the destination named by its `source.path`.
+   The destination is `~/.codex/plugins/<plugin-name>`. Copy recursively,
+   overwriting package-owned files only when permitted by the modification
+   check. Preserve destination files that are not supplied by the package.
+5. On each successful publication, write publisher state under
+   `~/.codex/marketplace-publisher/state/<marketplace-name>.json`. It records
+   the SHA-256 digests of package-owned plugin files after publication and is
+   not treated as plugin content.
+6. Persist the marketplace JSON atomically: serialize to a temporary file in
+   the destination directory, flush and fsync it, then replace
+   `marketplace.json`. Apply restrictive owner-only permissions where the
+   platform supports them. If copying or writing fails, retain the previous
+   marketplace JSON and return a useful error. Stage and validate all plugin
+   source files before changing any destination files.
 
 ## Merge rules
 
-The installed marketplace is the base document. Preserve its unknown top-level
-fields, `interface` fields, and plugin entries unless a rule below changes
-them.
+The installed same-name marketplace is the base document. Preserve its unknown
+top-level fields and unrelated plugin entries unless a rule below changes them.
 
 | Existing entry with the same plugin `name` | Result |
 | --- | --- |
 | No | Add the embedded entry verbatim, retaining embedded list order after existing entries. |
-| Yes, semantically identical | Keep the existing entry; update its plugin files from the embedded copy. |
+| Yes, semantically identical | Keep the existing entry; update its plugin files if modification checks permit. |
 | Yes, different | Replace the entry with the embedded entry and report that it was updated. |
 
-Semantic identity is equality of the JSON objects after key-order-independent
-parsing. The merged `plugins` array must contain each plugin name once. The
-top-level marketplace `name` remains `marketplace-publisher`; when the
-embedded document supplies an `interface`, it replaces the existing
-`interface` so the installed marketplace carries the package's current
-identity and display metadata.
+Semantic identity is equality of parsed JSON objects with object-key order
+ignored. The merged `plugins` array must contain each plugin name once. When
+the embedded document supplies an `interface`, it replaces the installed
+`interface` so the marketplace carries the packaged display metadata.
 
-## Command contract
+## Runtime command contract
 
-`marketplace-publisher` takes no required arguments. It prints a concise
-summary identifying whether it installed or merged the marketplace, plus the
-number of plugin entries added, updated, and left unchanged. It exits zero on
-success and non-zero for invalid resources, invalid/conflicting installed
-marketplaces, filesystem errors, or interrupted publication. It must never
-modify any marketplace with a different name.
+```text
+marketplace-publisher [--dry-run] [--force] [--json] [--verbose]
+```
 
-The command should be safe to run repeatedly: once embedded files and entries
-are already current, subsequent runs leave the JSON semantically unchanged and
-report a no-op merge.
+- `--dry-run` performs every read, validation, merge, and modification check
+  but writes no marketplace, plugin, or publisher-state files.
+- `--force` permits replacement of package-owned modified files and unmanaged
+  destination plugin directories; it never deletes extra destination files.
+- `--json` writes one JSON result object to standard output and no human status
+  lines. It includes `status`, `marketplace`, `dry_run`, `plugins` (added,
+  updated, unchanged, conflicts), and `errors`.
+- `--verbose` adds diagnostic progress messages to standard error. It does not
+  expose file contents or sensitive user data.
+
+Without `--json`, print a concise summary identifying whether the marketplace
+was installed, merged, or left unchanged, plus plugin counts. Exit zero on
+success and non-zero for invalid resources, invalid or conflicting installed
+marketplaces, modification conflicts, filesystem errors, or interrupted
+publication. It must never modify a different-name marketplace.
+
+The command is idempotent: once embedded files and entries are current,
+subsequent runs leave marketplace JSON semantically unchanged and report a
+no-op merge.
 
 ## Error handling and safety
 
 - Do not follow or write through symlinks in bundled plugin resources or at
-  destination plugin roots; fail rather than publishing outside the expected
+  destination plugin roots; fail rather than publishing outside expected
   locations.
 - Reject plugin paths that are absolute or contain `..`.
-- Never invoke code from embedded plugins while publishing.
+- Never invoke code from embedded plugins while importing or publishing.
 - Do not depend on the `codex` executable or require a Codex restart. The
-  command only lays down the standard personal marketplace files; the user can
-  restart or refresh their Codex surface afterwards if necessary.
+  commands only read and write the standard personal marketplace files; the
+  user can restart or refresh Codex afterwards if necessary.
 
-## Tests
+## Tests and quality checks
 
-Unit tests must use a temporary home directory and cover:
+Use pytest and temporary home directories. Tests must cover:
 
-- fresh installation creates the marketplace JSON and all plugin files;
-- same-name installation preserves unrelated metadata and plugins, appends new
+- importer behavior for all plugins, a selected plugin subset, absent requested
+  plugins, malformed source data, and source marketplace-name mismatch;
+- fresh publication creates marketplace JSON, state, and all plugin files;
+- same-name publication preserves unrelated metadata and plugins, appends new
   plugins, and replaces changed same-name entries;
-- repeated publication is a no-op at the JSON level;
+- repeated publication is a JSON-level no-op;
 - a different-name marketplace, malformed JSON, invalid embedded resource, and
-  unsafe plugin path fail without modifying the existing JSON;
+  unsafe plugin path fail without changing existing JSON;
+- a changed package-owned file and an unmanaged destination both fail unless
+  `--force`; forced publication preserves unrelated destination files;
+- `--dry-run` makes no writes, and `--json` returns the documented result
+  shape;
 - a simulated copy or atomic-write failure does not corrupt the existing JSON;
 - packaged-resource access works after building and installing a wheel.
 
+Every behavior-changing implementation task follows RED, GREEN, and REFACTOR:
+
+1. Add the smallest focused pytest test for one approved requirement and run it
+   to confirm the expected failure before production-code changes.
+2. Make the smallest change that passes the targeted test and rerun it.
+3. Refactor only after the test is green, then rerun it and any nearby relevant
+   checks.
+
+Record the exact RED, GREEN, and refactor commands and observed outcomes in the
+implementation handoff. If no repeatable automated check is feasible, record
+the reason and use the strongest available alternative validation; this is an
+explicit exception, not a completed TDD cycle.
+
+The project quality commands are:
+
+```sh
+poetry run ruff format --check .
+poetry run ruff check .
+poetry run rumdl fmt --check .
+poetry run rumdl check .
+poetry run pytest
+poetry build
+```
+
 ## Acceptance criteria
 
-After `poetry install` and `poetry run marketplace-publisher`, a valid
-`~/.agents/plugins/marketplace.json` named `marketplace-publisher` exists and
-all plugins referenced by its bundled entries exist under `~/.codex/plugins/`.
-Running the command again preserves unrelated same-marketplace content, updates
-the package-owned entries and files, and leaves no duplicate plugin names.
+Given a valid personal marketplace named `example`, when
+`poetry run marketplace-publisher-import example` succeeds, then package
+resources contain that marketplace document and every referenced plugin.
+
+Given a packaged marketplace, when `poetry run marketplace-publisher` runs and
+the personal marketplace file is absent, then a valid personal marketplace with
+the packaged target name, its plugin files, and a publisher state manifest are
+created.
+
+Given a same-name marketplace with unrelated content, when publication runs,
+then unrelated content is preserved and package-owned entries are added or
+updated without duplication.
+
+Given a different-name personal marketplace, when publication runs, then it
+exits non-zero and makes no changes.
+
+Given a package-owned plugin file changed after publication, when publication
+runs without `--force`, then it exits non-zero and makes no changes; with
+`--force`, package-owned files are restored and unrelated destination files are
+preserved.
+
+Given `--dry-run`, when any publication outcome is evaluated, then no files are
+written. Given `--json`, the command emits one result object matching the
+runtime command contract.
