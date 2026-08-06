@@ -101,11 +101,21 @@ Persist a JSON state document at:
 It contains the target marketplace name and, for each package-owned plugin, a
 mapping of relative file paths to SHA-256 digests. It records only files copied
 by the publisher. Extra files in a destination plugin directory are neither
-tracked nor deleted.
+tracked nor deleted. The manifest is shared by every generated installer that
+targets the marketplace: a publisher replaces records only for its embedded
+plugins and preserves valid records for every other plugin.
 
 For an existing destination, compare every tracked file to state before any
-write. A missing state file means the destination is unmanaged. Any mismatch or
-unmanaged destination is a conflict unless `--force` is present.
+write. A missing state file, or a missing record for that destination plugin,
+means the destination is unmanaged. Any mismatch or unmanaged destination is a
+conflict unless `--force` is present. Use separate error messages and result
+details for modified package-owned files and unmanaged plugin directories.
+
+On successful forced adoption, record digests for only the adopted plugin and
+retain state records for unrelated plugins. Reject an invalid state document
+before mutation; do not silently discard unrelated records. Existing state
+documents require no migration because their plugin map is already the shared
+record set.
 
 ### Result model
 
@@ -141,8 +151,9 @@ error.
 5. Hash and stage every embedded plugin. Before mutation, load state and check
    tracked destination files and unmanaged destinations.
 6. In dry-run mode, return the plan without creating directories or files.
-7. Copy permitted plugin files, preserve unowned files, write replacement state,
-   and atomically replace marketplace JSON last.
+7. Copy permitted plugin files, preserve unowned files, merge updated records
+   for only the embedded plugins into publisher state, and atomically replace
+   marketplace JSON last.
 
 The state file is written only after all plugin copies succeed. If a copy fails,
 the old marketplace JSON and state remain intact; report that some plugin files
@@ -170,7 +181,8 @@ Tests are grouped by behavior:
 
 - parser and path validation;
 - importer selection and staged replacement;
-- publisher fresh install, merge, conflict, force, and dry-run behavior;
+- publisher fresh install, merge, conflict, force, dry-run, and multi-installer
+  state-coexistence behavior;
 - CLI human and JSON result behavior;
 - wheel installation and self-contained publishing in an isolated virtual
   environment after removing the original import source.
@@ -204,6 +216,9 @@ handoff.
 - Do not run plugin code or call the `codex` executable.
 - Do not infer ownership from file names; state manifests are the ownership
   record.
+- Do not replace the marketplace-wide state plugin map with a package-local
+  map; independent installers for the same marketplace must retain one
+  another's records.
 - Do not claim complete filesystem rollback after an operating-system copy
   failure. Preserve JSON and state, stage first, and report the residual risk.
 - Do not select or commit a marketplace payload until the user supplies one

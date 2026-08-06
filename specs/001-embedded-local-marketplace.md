@@ -128,8 +128,9 @@ installed marketplace before any user files are changed.
 3. Before changing an existing embedded plugin destination, check its publisher
    state manifest. If a previously published, package-owned file is missing or
    has a different SHA-256 digest, fail before mutation unless `--force` is
-   supplied. If the destination exists without publisher state, treat it as an
-   unmanaged conflict and likewise require `--force`.
+   supplied. If the destination exists but has no state record for that plugin,
+   treat it as an unmanaged conflict and likewise require `--force`. Report
+   unmanaged conflicts distinctly from modified package-owned files.
 4. Copy each embedded plugin to the destination named by its `source.path`.
    The destination is
    `~/.codex/local-marketplaces/<marketplace-name>/plugins/<plugin-name>`.
@@ -139,7 +140,9 @@ installed marketplace before any user files are changed.
 5. On each successful publication, write publisher state under
    `~/.codex/local-marketplaces/<marketplace-name>/.marketplace-publisher/state.json`.
    It records the SHA-256 digests of package-owned plugin files after
-   publication and is not treated as plugin content.
+   publication and is not treated as plugin content. State is marketplace-wide:
+   retain valid records for plugins not supplied by the current package and
+   replace records only for plugins that it supplies.
 6. Persist the marketplace JSON atomically: serialize to a temporary file in
    the destination directory, flush and fsync it, then replace
    `marketplace.json`. Apply restrictive owner-only permissions where the
@@ -213,7 +216,13 @@ Use pytest and temporary home directories. Tests must cover:
 - a different-name marketplace, malformed JSON, invalid embedded resource, and
   unsafe plugin path fail without changing existing JSON;
 - a changed package-owned file and an unmanaged destination both fail unless
-  `--force`; forced publication preserves unrelated destination files;
+  `--force`; errors distinguish those conflict types, and forced publication
+  preserves unrelated destination files;
+- independently generated packages targeting the same marketplace can publish
+  different plugins in either order; their state records coexist, and rerunning
+  either package does not report the other package's plugin as unmanaged;
+- publishing one package updates only its plugin state records and preserves
+  records for plugins owned by other packages;
 - `--dry-run` makes no writes, and `--json` returns the documented result
   shape;
 - a simulated copy or atomic-write failure does not corrupt the existing JSON;
@@ -266,6 +275,15 @@ Given a package-owned plugin file changed after publication, when publication
 runs without `--force`, then it exits non-zero and makes no changes; with
 `--force`, package-owned files are restored and unrelated destination files are
 preserved.
+
+Given two packages for different plugins in the same marketplace, when they
+publish successfully in either order, then the state manifest contains records
+for both plugins. When either package runs again without file changes, then it
+does not report the other package's plugin as unmanaged.
+
+Given an existing plugin directory without a state record, when publication
+runs without `--force`, then it reports an unmanaged-plugin conflict rather
+than a modified package-owned-file conflict and makes no changes.
 
 Given `--dry-run`, when any publication outcome is evaluated, then no files are
 written. Given `--json`, the command emits one result object matching the
