@@ -8,6 +8,8 @@
 - Poetry configuration and Ruff/Rumdl pre-commit tooling are configured.
 - The importer, publisher, state protection, CLI, and self-contained wheel
   integration test are implemented and passing.
+- A tested Copier template creates custom-named installer repositories with no
+  embedded marketplace payload, memory bank, or specifications.
 - Repository-local memory-bank routing and core context files are present.
 
 ## In flight
@@ -26,3 +28,5 @@
   guarantees during implementation.
 - Do not select or commit a user's marketplace payload without an explicit
   target-name and plugin-selection decision.
+- Keep the Copier template's source tree aligned with publisher changes; its
+  rendered project has its own package name and console-script contract.

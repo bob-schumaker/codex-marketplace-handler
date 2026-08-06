@@ -12,6 +12,8 @@
 - Standard-library resource access via `importlib.resources`.
 - Ruff formats and lints Python; Rumdl formats and lints Markdown; pytest is
   the test runner; pre-commit runs Ruff and Rumdl hooks.
+- Copier is a development dependency. `copier-template/copier.yml` derives a
+  Python package name from a custom project slug and renders the installer.
 
 ## Verification expectations
 

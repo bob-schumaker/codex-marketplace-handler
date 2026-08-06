@@ -30,3 +30,10 @@ Each local marketplace is rooted at
 Validate JSON and safe local paths before mutation; reject symlinks and paths
 that escape the expected plugin root. Write marketplace JSON atomically and do
 not run plugin code while publishing.
+
+## Copier bootstrap
+
+`copier-template/` is a self-contained source template. It renders a named
+distribution, console script, and Python package while retaining the
+repository-only importer and empty resource-package markers. It intentionally
+does not render `memory-bank/`, `specs/`, or any marketplace payload.

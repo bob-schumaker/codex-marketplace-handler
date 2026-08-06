@@ -12,6 +12,8 @@ yet been selected for the release artifact.
   configured.
 - Done: repository-only importer, publisher, state checks, runtime CLI, and
   self-contained wheel verification are implemented through TDD.
+- Done: a Copier template renders a custom-named, payload-free marketplace
+  installer without this repository's memory-bank or specification artifacts.
 - Done: local marketplace layout is confirmed under
   `~/.codex/local-marketplaces/<marketplace-name>/`.
 - Pending: select and import the marketplace payload to embed in the release
@@ -22,3 +24,5 @@ yet been selected for the release artifact.
 1. Obtain the marketplace name and optional plugin selection from the user.
 2. Run `poetry run python scripts/import_marketplace.py` with that selection.
 3. Build and inspect the final wheel, then run the installed runtime command.
+4. Use `poetry run copier copy copier-template <destination>` when a clean,
+   custom-named installer repository is needed.
