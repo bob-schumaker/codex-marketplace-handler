@@ -86,3 +86,21 @@ Complete each behavior task with a documented RED, GREEN, and REFACTOR cycle.
 - [ ] Record final validation output and every TDD exception in the handoff.
 - [ ] Confirm no marketplace payload, plugin, credential, or private-path data
   was accidentally committed.
+
+## 9. Publisher state coexistence
+
+- [ ] RED: add a test that two distinct package payloads targeting the same
+  marketplace publish different plugins in either order, retain both state
+  records, and rerun without conflicts.
+- [ ] RED: add tests that a plugin directory with no state record reports an
+  unmanaged conflict, while a digest mismatch reports a modified
+  package-owned-file conflict.
+- [ ] RED: add a test that forced adoption updates only its plugin state record
+  and preserves state records for other installer-owned plugins.
+- [ ] GREEN: merge publisher state records by plugin name when writing state;
+  replace only records for embedded plugins and preserve validated unrelated
+  records.
+- [ ] GREEN: introduce distinct unmanaged and modified ownership-conflict
+  diagnostics without changing `--force`, dry-run, or atomic-write behavior.
+- [ ] REFACTOR: centralize state-record merge and validation helpers, then run
+  `poetry run pytest tests/test_publisher.py`.
