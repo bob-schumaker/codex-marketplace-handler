@@ -26,9 +26,9 @@ exist.
   `marketplace_publisher.__main__:main`.
 - Register `marketplace-publisher-import` as a repository-development console
   script that imports a marketplace payload into package resources.
-- Support only Codex's personal local marketplace:
-  `~/.agents/plugins/marketplace.json`, with local plugin files rooted at
-  `~/.codex/plugins/`.
+- Support only Codex local marketplace roots at
+  `~/.codex/local-marketplaces/<marketplace-name>/`. Each root contains
+  `.agents/plugins/marketplace.json` and a `plugins/` directory.
 - Use `importlib.resources` to read packaged resources so runtime behavior is
   independent of the current working directory.
 
@@ -40,17 +40,18 @@ The repository-local command has this interface:
 poetry run marketplace-publisher-import MARKETPLACE_NAME [PLUGIN_NAME ...]
 ```
 
-The command reads the personal marketplace document at
-`~/.agents/plugins/marketplace.json` and requires its top-level `name` to equal
-`MARKETPLACE_NAME`. It validates the document and copies it, plus the chosen
-plugin directories, into `src/marketplace_publisher/resources/`.
+The command reads the marketplace document at
+`~/.codex/local-marketplaces/MARKETPLACE_NAME/.agents/plugins/marketplace.json`
+and requires its top-level `name` to equal `MARKETPLACE_NAME`. It validates the
+document and copies it, plus the chosen plugin directories, into
+`src/marketplace_publisher/resources/`.
 
 - With no plugin names, import every marketplace entry.
 - With plugin names, retain only those entries in the embedded
   `marketplace.json` and copy only their directories.
 - Fail without changing package resources if a requested plugin is absent,
   entries are duplicated or malformed, a source is not a safe local
-  `./.codex/plugins/...` path, a plugin directory is missing, or an embedded
+  `./plugins/...` path, a plugin directory is missing, or an embedded
   resource replacement would traverse a symlink.
 - Replace the existing embedded payload as one operation. The imported
   marketplace JSON and copied plugin directories must agree exactly.
@@ -75,19 +76,21 @@ src/marketplace_publisher/
 
 `resources/marketplace.json` is a valid Codex marketplace document. Its
 top-level `name` determines the runtime target name. Its local plugin entries
-use `./.codex/plugins/<plugin-name>` paths relative to the personal marketplace
-root (`~`). The embedded resource must pass the same structural validation
-imposed on an installed marketplace before any user files are changed.
+use `./plugins/<plugin-name>` paths relative to the marketplace root. The
+embedded resource must pass the same structural validation imposed on an
+installed marketplace before any user files are changed.
 
 ## Publishing behavior
 
 1. Load and validate the embedded marketplace. Reject malformed JSON, a missing
    or invalid marketplace name, duplicate plugin names, non-local sources, or
-   paths that are not safe `./.codex/plugins/...` relative paths.
-2. Read `~/.agents/plugins/marketplace.json` if it exists.
-   - If it is missing, create parent directories, copy all bundled plugin
-     directories into `~/.codex/plugins/`, and write the embedded marketplace
-     document unchanged.
+   paths that are not safe `./plugins/...` relative paths.
+2. Read the target catalog at
+   `~/.codex/local-marketplaces/<marketplace-name>/.agents/plugins/marketplace.json`
+   if it exists.
+   - If it is missing, create the marketplace root and parent directories, copy
+     all bundled plugin directories into its `plugins/` directory, and write
+     the embedded marketplace document unchanged.
    - If its top-level `name` differs from the embedded target name, leave it
      untouched, report the conflict, and exit non-zero. A personal marketplace
      JSON file represents one marketplace; support for other marketplace
@@ -99,13 +102,15 @@ imposed on an installed marketplace before any user files are changed.
    supplied. If the destination exists without publisher state, treat it as an
    unmanaged conflict and likewise require `--force`.
 4. Copy each embedded plugin to the destination named by its `source.path`.
-   The destination is `~/.codex/plugins/<plugin-name>`. Copy recursively,
+   The destination is
+   `~/.codex/local-marketplaces/<marketplace-name>/plugins/<plugin-name>`.
+   Copy recursively,
    overwriting package-owned files only when permitted by the modification
    check. Preserve destination files that are not supplied by the package.
 5. On each successful publication, write publisher state under
-   `~/.codex/marketplace-publisher/state/<marketplace-name>.json`. It records
-   the SHA-256 digests of package-owned plugin files after publication and is
-   not treated as plugin content.
+   `~/.codex/local-marketplaces/<marketplace-name>/.marketplace-publisher/state.json`.
+   It records the SHA-256 digests of package-owned plugin files after
+   publication and is not treated as plugin content.
 6. Persist the marketplace JSON atomically: serialize to a temporary file in
    the destination directory, flush and fsync it, then replace
    `marketplace.json`. Apply restrictive owner-only permissions where the
@@ -216,7 +221,7 @@ Given a valid personal marketplace named `example`, when
 resources contain that marketplace document and every referenced plugin.
 
 Given a packaged marketplace, when `poetry run marketplace-publisher` runs and
-the personal marketplace file is absent, then a valid personal marketplace with
+its target local marketplace root is absent, then a valid marketplace root with
 the packaged target name, its plugin files, and a publisher state manifest are
 created.
 
@@ -224,8 +229,8 @@ Given a same-name marketplace with unrelated content, when publication runs,
 then unrelated content is preserved and package-owned entries are added or
 updated without duplication.
 
-Given a different-name personal marketplace, when publication runs, then it
-exits non-zero and makes no changes.
+Given a different-name catalog at the target marketplace root, when publication
+runs, then it exits non-zero and makes no changes.
 
 Given a package-owned plugin file changed after publication, when publication
 runs without `--force`, then it exits non-zero and makes no changes; with
@@ -235,3 +240,8 @@ preserved.
 Given `--dry-run`, when any publication outcome is evaluated, then no files are
 written. Given `--json`, the command emits one result object matching the
 runtime command contract.
+
+## Implementation artifacts
+
+- [Technical plan](001-embedded-local-marketplace.plan.md)
+- [TDD task list](001-embedded-local-marketplace.tasks.md)
