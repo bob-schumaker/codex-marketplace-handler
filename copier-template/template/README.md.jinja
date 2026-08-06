@@ -23,3 +23,8 @@ complete release payload. Build and install the distribution, then run:
 ```sh
 {{ project_slug }} [--dry-run] [--force] [--json] [--verbose]
 ```
+
+Use `--force` only to replace modified package-owned files or to adopt an
+existing plugin directory without a publisher-state record. The state manifest
+is shared by installers for the same marketplace, and this installer preserves
+records for plugins supplied by the others.

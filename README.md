@@ -65,4 +65,6 @@ same-name marketplace already under `~/.codex/local-marketplaces/`.
 
 `--dry-run` makes no changes, `--json` emits machine-readable status, and
 `--force` permits replacement when an existing managed plugin has
-user-modified files.
+user-modified files or when adopting an existing plugin directory that has no
+publisher-state record. State is shared by installers for the same marketplace,
+so each installer retains ownership records for plugins supplied by the others.
