@@ -63,8 +63,9 @@ Repository operating instructions for coding agents.
 - Treat `specs/001-embedded-local-marketplace.md` as the current implementation
   contract.
 - Preserve unknown same-marketplace metadata and unrelated plugin entries.
-- Never modify `~/.agents/plugins/marketplace.json` when its marketplace name
-  differs from the packaged marketplace's target name.
+- Never modify a local marketplace outside
+  `~/.codex/local-marketplaces/<marketplace-name>/`, or one whose name differs
+  from the packaged marketplace's target name.
 - Validate marketplace data and plugin paths before publishing; reject
   symlinks and paths that escape the expected plugin root.
 - Do not execute embedded plugin code during publication.

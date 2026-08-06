@@ -2,17 +2,21 @@
 
 ## Goal
 
-Create a Poetry-based Python package that contains a Codex local marketplace
-and publishes it to the user's personal Codex location.
+Create a Poetry-based Python package that imports, embeds, and publishes a
+Codex local marketplace.
 
 ## Required behavior
 
-- The distribution embeds `marketplace.json` and each referenced plugin.
-- Its default executable finds the installed personal marketplace.
-- If the existing marketplace has the same name, merge package-owned entries
-  and plugin files into it.
-- If it does not exist, install the embedded marketplace unchanged.
-- Never modify a marketplace with a different name.
+- The development importer selects a named local marketplace and optionally a
+  plugin subset, then embeds its catalog and plugin files as package data.
+- The runtime executable derives the target name from embedded data and
+  publishes to `~/.codex/local-marketplaces/<marketplace-name>/`.
+- If the target catalog exists with the same name, merge package-owned entries
+  and plugin files into it; otherwise install the embedded marketplace.
+- Detect modified or unmanaged package-owned plugin files and require
+  `--force` before overwriting them.
+- Support `--dry-run`, `--json`, and `--verbose`; never modify a marketplace
+  outside the named local-marketplace root.
 
 ## Source specification
 
