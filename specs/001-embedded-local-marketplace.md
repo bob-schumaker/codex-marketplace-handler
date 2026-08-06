@@ -24,27 +24,51 @@ exist.
   checkout.
 - Register `marketplace-publisher` as the runtime console script, mapped to
   `marketplace_publisher.__main__:main`.
-- Register `marketplace-publisher-import` as a repository-development console
-  script that imports a marketplace payload into package resources.
+- Provide `scripts/import_marketplace.py` as a repository-only development
+  script that imports a marketplace payload into package resources. Do not
+  expose it as an installed console script.
 - Support only Codex local marketplace roots at
   `~/.codex/local-marketplaces/<marketplace-name>/`. Each root contains
   `.agents/plugins/marketplace.json` and a `plugins/` directory.
 - Use `importlib.resources` to read packaged resources so runtime behavior is
   independent of the current working directory.
 
+## Self-contained distribution
+
+The import command produces the package's complete installation payload:
+
+- the filtered `marketplace.json`, including the target marketplace name and
+  every selected plugin entry;
+- every file in each selected plugin tree; and
+- only root-relative `./plugins/...` source paths, never paths to the original
+  local marketplace or any other user-specific absolute path.
+
+At runtime, the publisher reads this payload exclusively from the installed
+distribution with `importlib.resources`. It must not read the marketplace from
+which the package was imported, invoke Codex, download plugin content, or rely
+on a source checkout. A published wheel therefore contains all information and
+files needed to install its targeted marketplace and plugins.
+
 ## Importing package data
 
 The repository-local command has this interface:
 
 ```sh
-poetry run marketplace-publisher-import MARKETPLACE_NAME [PLUGIN_NAME ...]
+poetry run python scripts/import_marketplace.py MARKETPLACE_NAME [PLUGIN_NAME ...]
 ```
 
-The command reads the marketplace document at
+The command is a repository-development tool. It reads the marketplace document
+at
 `~/.codex/local-marketplaces/MARKETPLACE_NAME/.agents/plugins/marketplace.json`
-and requires its top-level `name` to equal `MARKETPLACE_NAME`. It validates the
-document and copies it, plus the chosen plugin directories, into
-`src/marketplace_publisher/resources/`.
+and requires its top-level `name` to equal `MARKETPLACE_NAME`.
+
+After validation, it copies the filtered installation payload to these package
+data locations:
+
+| Local marketplace source | Package-data destination |
+| --- | --- |
+| `.agents/plugins/marketplace.json` | `src/marketplace_publisher/resources/marketplace.json` |
+| `plugins/<plugin-name>/` | `src/marketplace_publisher/resources/plugins/<plugin-name>/` |
 
 - With no plugin names, import every marketplace entry.
 - With plugin names, retain only those entries in the embedded
@@ -55,6 +79,11 @@ document and copies it, plus the chosen plugin directories, into
   resource replacement would traverse a symlink.
 - Replace the existing embedded payload as one operation. The imported
   marketplace JSON and copied plugin directories must agree exactly.
+
+The script exists only in the source repository and must not be included as a
+wheel entry point or otherwise made executable from an installed package. Its
+import-time source paths never become runtime dependencies: only the copied
+package data is used by a published wheel.
 
 The command is intentionally a development tool: it does not publish to Codex,
 does not invoke plugin code, and does not mutate the source marketplace.
@@ -188,7 +217,8 @@ Use pytest and temporary home directories. Tests must cover:
 - `--dry-run` makes no writes, and `--json` returns the documented result
   shape;
 - a simulated copy or atomic-write failure does not corrupt the existing JSON;
-- packaged-resource access works after building and installing a wheel.
+- an installed wheel publishes correctly after the original source marketplace
+  is absent, proving the embedded payload is self-contained.
 
 Every behavior-changing implementation task follows RED, GREEN, and REFACTOR:
 
