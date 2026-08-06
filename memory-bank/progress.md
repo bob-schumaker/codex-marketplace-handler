@@ -6,22 +6,23 @@
   `specs/001-embedded-local-marketplace.md`.
 - The specification has an implementation plan and TDD task list.
 - Poetry configuration and Ruff/Rumdl pre-commit tooling are configured.
+- The importer, publisher, state protection, CLI, and self-contained wheel
+  integration test are implemented and passing.
 - Repository-local memory-bank routing and core context files are present.
 
 ## In flight
 
-- No code implementation has begun.
+- A release payload has not yet been selected or embedded.
 
 ## Remaining
 
-- Complete the ordered TDD tasks in
-  `specs/001-embedded-local-marketplace.tasks.md`.
-- Import a real marketplace payload after the importer is implemented.
-- Build and verify an installed wheel can publish from embedded resources after
-  the original import marketplace is unavailable.
+- Select and import a real marketplace payload with the repository-only script.
+- Build and verify the final release wheel installs that selected payload.
 
 ## Risks and follow-ups
 
 - Keep embedded `source.path` values relative to each local marketplace root.
 - Preserve the spec's staged-copy, state-manifest, and no-cross-marketplace
   guarantees during implementation.
+- Do not select or commit a user's marketplace payload without an explicit
+  target-name and plugin-selection decision.
