@@ -1,0 +1,123 @@
+import json
+import shutil
+from pathlib import Path
+
+import pytest
+
+from {{ package_name }}.importer import ImportError, import_marketplace
+
+
+def write_marketplace(root: Path, plugins: list[str]) -> None:
+    catalog = root / ".agents" / "plugins" / "marketplace.json"
+    catalog.parent.mkdir(parents=True)
+    catalog.write_text(
+        json.dumps(
+            {
+                "name": "example",
+                "plugins": [
+                    {
+                        "name": name,
+                        "source": {"source": "local", "path": f"./plugins/{name}"},
+                    }
+                    for name in plugins
+                ],
+            }
+        )
+    )
+    for name in plugins:
+        plugin = root / "plugins" / name
+        (plugin / ".codex-plugin").mkdir(parents=True)
+        (plugin / ".codex-plugin" / "plugin.json").write_text(
+            json.dumps({"name": name, "version": "1.0.0"})
+        )
+        (plugin / "skill.md").write_text(f"# {name}\n")
+
+
+def package_data(resource_root: Path) -> tuple[dict[str, object], set[str]]:
+    catalog = json.loads((resource_root / "marketplace.json").read_text())
+    plugins = {path.name for path in (resource_root / "plugins").iterdir()}
+    return catalog, plugins
+
+
+def test_imports_all_plugins_into_package_data(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "package" / "resources"
+    write_marketplace(source, ["alpha", "beta"])
+
+    imported = import_marketplace(source, destination)
+
+    catalog, plugins = package_data(destination)
+    assert imported.name == "example"
+    assert [entry["name"] for entry in catalog["plugins"]] == ["alpha", "beta"]
+    assert plugins == {"alpha", "beta"}
+    assert (destination / "plugins" / "alpha" / "skill.md").read_text() == "# alpha\n"
+
+
+def test_imports_only_selected_plugins(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "package" / "resources"
+    write_marketplace(source, ["alpha", "beta"])
+
+    import_marketplace(source, destination, selected_plugins=["beta"])
+
+    catalog, plugins = package_data(destination)
+    assert [entry["name"] for entry in catalog["plugins"]] == ["beta"]
+    assert plugins == {"beta"}
+
+
+def test_import_preserves_resource_package_marker(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "package" / "resources"
+    write_marketplace(source, ["alpha"])
+    destination.mkdir(parents=True)
+    (destination / "__init__.py").write_text('"""resources"""\n')
+
+    import_marketplace(source, destination)
+
+    assert (destination / "__init__.py").read_text() == '"""resources"""\n'
+
+
+def test_rejects_unknown_requested_plugin_without_replacing_payload(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "package" / "resources"
+    write_marketplace(source, ["alpha"])
+    destination.mkdir(parents=True)
+    (destination / "sentinel.txt").write_text("keep")
+
+    with pytest.raises(ImportError, match="unknown plugin"):
+        import_marketplace(source, destination, selected_plugins=["missing"])
+
+    assert (destination / "sentinel.txt").read_text() == "keep"
+
+
+def test_rejects_missing_plugin_directory_without_replacing_payload(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "package" / "resources"
+    write_marketplace(source, ["alpha"])
+    shutil.rmtree(source / "plugins" / "alpha")
+    destination.mkdir(parents=True)
+    (destination / "sentinel.txt").write_text("keep")
+
+    with pytest.raises(ImportError, match="does not exist"):
+        import_marketplace(source, destination)
+
+    assert (destination / "sentinel.txt").read_text() == "keep"
+
+
+def test_rejects_marketplace_name_mismatch_without_replacing_payload(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "package" / "resources"
+    write_marketplace(source, ["alpha"])
+    destination.mkdir(parents=True)
+    (destination / "sentinel.txt").write_text("keep")
+
+    with pytest.raises(ImportError, match="name does not match"):
+        import_marketplace(source, destination, expected_name="different")
+
+    assert (destination / "sentinel.txt").read_text() == "keep"

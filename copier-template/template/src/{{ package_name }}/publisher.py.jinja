@@ -1,0 +1,406 @@
+"""Publish embedded marketplace package data into a local Codex marketplace."""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import os
+import shutil
+import tempfile
+from dataclasses import dataclass
+from importlib import resources
+from pathlib import Path
+from typing import Any
+
+from .models import Marketplace, PluginEntry
+from .paths import MarketplacePaths, PathSafetyError
+from .validation import MarketplaceValidationError, parse_marketplace_json
+
+
+class PublisherError(RuntimeError):
+    """Base error for expected publisher failures."""
+
+
+class MarketplaceConflictError(PublisherError):
+    """Raised when the target catalog belongs to another marketplace."""
+
+
+class ModificationConflictError(PublisherError):
+    """Raised when package-owned destination files have been changed."""
+
+
+@dataclass(frozen=True)
+class PublishResult:
+    """A machine-readable summary of a planned or completed publication."""
+
+    status: str
+    marketplace: str
+    dry_run: bool
+    added: tuple[str, ...]
+    updated: tuple[str, ...]
+    unchanged: tuple[str, ...]
+    conflicts: tuple[str, ...] = ()
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "marketplace": self.marketplace,
+            "dry_run": self.dry_run,
+            "plugins": {
+                "added": list(self.added),
+                "updated": list(self.updated),
+                "unchanged": list(self.unchanged),
+                "conflicts": list(self.conflicts),
+            },
+            "errors": [],
+        }
+
+
+def publish_embedded_marketplace(
+    home: Path | None = None, *, dry_run: bool = False, force: bool = False
+) -> PublishResult:
+    """Publish marketplace data bundled in the installed distribution."""
+    resource_files = resources.files("{{ package_name }}.resources")
+    with resources.as_file(resource_files) as resource_root:
+        return publish_marketplace(
+            Path(resource_root), home or Path.home(), dry_run=dry_run, force=force
+        )
+
+
+def publish_marketplace(
+    resource_root: Path, home: Path, *, dry_run: bool = False, force: bool = False
+) -> PublishResult:
+    """Publish package resources into the named local marketplace root."""
+    embedded = _load_marketplace(resource_root / "marketplace.json")
+    paths = MarketplacePaths(home, embedded.name)
+    try:
+        paths.assert_safe_for_writes()
+    except PathSafetyError as error:
+        raise PublisherError(str(error)) from error
+    catalog_path = paths.catalog
+    plugin_root = paths.plugins
+    state_path = paths.state
+
+    installed = _load_installed_marketplace(catalog_path, embedded.name)
+    merged_document, added, updated, unchanged = _merge_marketplaces(
+        installed, embedded
+    )
+    staged_plugins = _stage_embedded_plugins(resource_root, embedded)
+    state = _load_state(state_path)
+    content_updates = _find_embedded_content_updates(
+        state, staged_plugins, embedded.plugins
+    )
+    updated = _combine_names(updated, content_updates)
+    unchanged = tuple(name for name in unchanged if name not in content_updates)
+    conflicts = _find_modification_conflicts(
+        plugin_root, state, embedded.plugins, staged_plugins
+    )
+    if conflicts and not force:
+        names = ", ".join(conflicts)
+        raise ModificationConflictError(
+            f"package-owned plugin files were modified: {names}"
+        )
+
+    if conflicts:
+        updated = _combine_names(updated, conflicts)
+        unchanged = tuple(name for name in unchanged if name not in conflicts)
+
+    status = _publication_status(installed, added, updated)
+    result = PublishResult(
+        status=status,
+        marketplace=embedded.name,
+        dry_run=dry_run,
+        added=added,
+        updated=updated,
+        unchanged=unchanged,
+        conflicts=tuple(conflicts),
+    )
+    if dry_run:
+        shutil.rmtree(staged_plugins.parent, ignore_errors=True)
+        return result
+
+    previous_state = state_path.read_bytes() if state_path.exists() else None
+    state_written = False
+    try:
+        _copy_staged_plugins(staged_plugins, plugin_root, embedded.plugins)
+        _atomic_write_json(
+            state_path, _build_state(embedded.name, staged_plugins, embedded.plugins)
+        )
+        state_written = True
+        _atomic_write_json(catalog_path, merged_document)
+    except OSError as error:
+        if state_written:
+            _restore_file(state_path, previous_state)
+        raise PublisherError(f"failed to publish marketplace: {error}") from error
+    finally:
+        shutil.rmtree(staged_plugins.parent, ignore_errors=True)
+    return result
+
+
+def _load_marketplace(path: Path) -> Marketplace:
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise PublisherError(f"embedded marketplace does not exist: {path}") from error
+    try:
+        return parse_marketplace_json(raw)
+    except MarketplaceValidationError as error:
+        raise PublisherError(str(error)) from error
+
+
+def _load_installed_marketplace(path: Path, expected_name: str) -> Marketplace | None:
+    if not path.exists():
+        return None
+    if path.is_symlink():
+        raise PublisherError("target marketplace catalog must not be a symlink")
+    installed = _load_marketplace(path)
+    if installed.name != expected_name:
+        raise MarketplaceConflictError(
+            "target marketplace catalog has a different name"
+        )
+    return installed
+
+
+def _merge_marketplaces(
+    installed: Marketplace | None, embedded: Marketplace
+) -> tuple[dict[str, Any], tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    if installed is None:
+        return (
+            copy.deepcopy(embedded.data),
+            tuple(entry.name for entry in embedded.plugins),
+            (),
+            (),
+        )
+
+    merged = copy.deepcopy(installed.data)
+    existing_entries = list(merged["plugins"])
+    positions = {entry["name"]: index for index, entry in enumerate(existing_entries)}
+    added: list[str] = []
+    updated: list[str] = []
+    unchanged: list[str] = []
+    for entry in embedded.plugins:
+        position = positions.get(entry.name)
+        if position is None:
+            existing_entries.append(copy.deepcopy(entry.data))
+            added.append(entry.name)
+        elif existing_entries[position] == entry.data:
+            unchanged.append(entry.name)
+        else:
+            existing_entries[position] = copy.deepcopy(entry.data)
+            updated.append(entry.name)
+    merged["plugins"] = existing_entries
+    if "interface" in embedded.data:
+        merged["interface"] = copy.deepcopy(embedded.data["interface"])
+    return merged, tuple(added), tuple(updated), tuple(unchanged)
+
+
+def _stage_embedded_plugins(resource_root: Path, marketplace: Marketplace) -> Path:
+    source_plugins = resource_root / "plugins"
+    if source_plugins.is_symlink():
+        raise PublisherError("embedded plugin root must not be a symlink")
+    staging_parent = Path(tempfile.mkdtemp(prefix="marketplace-publisher-"))
+    staged_plugins = staging_parent / "plugins"
+    staged_plugins.mkdir()
+    try:
+        for entry in marketplace.plugins:
+            source = source_plugins / entry.name
+            if not source.is_dir():
+                raise PublisherError(
+                    f"embedded plugin directory does not exist: {source}"
+                )
+            _copy_regular_tree(source, staged_plugins / entry.name)
+    except Exception:
+        shutil.rmtree(staging_parent, ignore_errors=True)
+        raise
+    return staged_plugins
+
+
+def _find_modification_conflicts(
+    plugin_root: Path,
+    state: dict[str, Any],
+    entries: tuple[PluginEntry, ...],
+    staged_plugins: Path,
+) -> list[str]:
+    state_plugins = state.get("plugins", {})
+    if not isinstance(state_plugins, dict):
+        raise PublisherError("publisher state is invalid")
+    conflicts: list[str] = []
+    for entry in entries:
+        destination = plugin_root / entry.name
+        previous = state_plugins.get(entry.name)
+        if destination.exists() and previous is None:
+            conflicts.append(entry.name)
+            continue
+        if previous is not None and not _matches_state(destination, previous):
+            conflicts.append(entry.name)
+            continue
+        if destination.is_symlink():
+            conflicts.append(entry.name)
+    return conflicts
+
+
+def _find_embedded_content_updates(
+    state: dict[str, Any], staged_plugins: Path, entries: tuple[PluginEntry, ...]
+) -> list[str]:
+    state_plugins = state.get("plugins", {})
+    if not isinstance(state_plugins, dict):
+        raise PublisherError("publisher state is invalid")
+    updates: list[str] = []
+    for entry in entries:
+        previous = state_plugins.get(entry.name)
+        if previous is None:
+            continue
+        if not isinstance(previous, dict) or previous.get("files") != _tree_digests(
+            staged_plugins / entry.name
+        ):
+            updates.append(entry.name)
+    return updates
+
+
+def _matches_state(destination: Path, previous: object) -> bool:
+    if not isinstance(previous, dict) or not isinstance(previous.get("files"), dict):
+        return False
+    if not destination.is_dir() or destination.is_symlink():
+        return False
+    for relative, expected_digest in previous["files"].items():
+        if not isinstance(relative, str) or not isinstance(expected_digest, str):
+            return False
+        file_path = destination / relative
+        if file_path.is_symlink() or not file_path.is_file():
+            return False
+        if _sha256(file_path) != expected_digest:
+            return False
+    return True
+
+
+def _copy_staged_plugins(
+    staged_plugins: Path, plugin_root: Path, entries: tuple[PluginEntry, ...]
+) -> None:
+    if plugin_root.is_symlink():
+        raise PublisherError("target plugin root must not be a symlink")
+    plugin_root.mkdir(parents=True, exist_ok=True)
+    for entry in entries:
+        destination = plugin_root / entry.name
+        if destination.is_symlink():
+            raise PublisherError("target plugin directory must not be a symlink")
+        _copy_regular_tree(staged_plugins / entry.name, destination, overwrite=True)
+
+
+def _build_state(
+    marketplace_name: str, staged_plugins: Path, entries: tuple[PluginEntry, ...]
+) -> dict[str, Any]:
+    return {
+        "marketplace": marketplace_name,
+        "plugins": {
+            entry.name: {"files": _tree_digests(staged_plugins / entry.name)}
+            for entry in entries
+        },
+    }
+
+
+def _load_state(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {"plugins": {}}
+    if path.is_symlink():
+        raise PublisherError("publisher state must not be a symlink")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise PublisherError("publisher state is invalid") from error
+    if not isinstance(data, dict):
+        raise PublisherError("publisher state is invalid")
+    return data
+
+
+def _copy_regular_tree(
+    source: Path, destination: Path, *, overwrite: bool = False
+) -> None:
+    if source.is_symlink() or not source.is_dir():
+        raise PublisherError("plugin source must be a non-symlink directory")
+    destination.mkdir(parents=True, exist_ok=True)
+    for path in source.rglob("*"):
+        if path.is_symlink():
+            raise PublisherError("plugin source must not contain a symlink")
+        relative = path.relative_to(source)
+        target = destination / relative
+        if path.is_dir():
+            if target.is_symlink():
+                raise PublisherError("target plugin directory must not be a symlink")
+            target.mkdir(exist_ok=True)
+        elif path.is_file():
+            if target.is_symlink():
+                raise PublisherError("target plugin file must not be a symlink")
+            if target.exists() and not overwrite:
+                raise PublisherError(f"target plugin file already exists: {target}")
+            shutil.copy2(path, target)
+        else:
+            raise PublisherError(f"unsupported plugin file: {path}")
+
+
+def _tree_digests(root: Path) -> dict[str, str]:
+    return {
+        path.relative_to(root).as_posix(): _sha256(path)
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for block in iter(lambda: file.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _atomic_write_json(path: Path, document: dict[str, Any]) -> None:
+    if path.is_symlink():
+        raise PublisherError("target file must not be a symlink")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}-", dir=path.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            json.dump(document, file, indent=2)
+            file.write("\n")
+            file.flush()
+            os.fsync(file.fileno())
+        os.chmod(temporary_path, 0o600)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _restore_file(path: Path, previous: bytes | None) -> None:
+    if previous is None:
+        path.unlink(missing_ok=True)
+        return
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}-restore-", dir=path.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as file:
+            file.write(previous)
+            file.flush()
+            os.fsync(file.fileno())
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _publication_status(
+    installed: Marketplace | None, added: tuple[str, ...], updated: tuple[str, ...]
+) -> str:
+    if installed is None:
+        return "installed"
+    if added or updated:
+        return "merged"
+    return "noop"
+
+
+def _combine_names(current: tuple[str, ...], additional: list[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((*current, *additional)))

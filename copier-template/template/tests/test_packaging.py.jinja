@@ -1,0 +1,112 @@
+import json
+import os
+import shutil
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+from {{ package_name }}.importer import import_marketplace
+
+
+def write_marketplace(root: Path) -> None:
+    catalog = root / ".agents" / "plugins" / "marketplace.json"
+    catalog.parent.mkdir(parents=True)
+    catalog.write_text(
+        json.dumps(
+            {
+                "name": "wheel-example",
+                "plugins": [
+                    {
+                        "name": "alpha",
+                        "source": {"source": "local", "path": "./plugins/alpha"},
+                    }
+                ],
+            }
+        )
+    )
+    plugin = root / "plugins" / "alpha"
+    (plugin / ".codex-plugin").mkdir(parents=True)
+    (plugin / ".codex-plugin" / "plugin.json").write_text(
+        json.dumps({"name": "alpha", "version": "1.0.0"})
+    )
+    (plugin / "skill.md").write_text("# Alpha\n")
+
+
+def run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> str:
+    completed = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return completed.stdout
+
+
+def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) -> None:
+    repository = Path(__file__).parents[1]
+    resources = repository / "src" / "{{ package_name }}" / "resources"
+    source_marketplace = tmp_path / "source-marketplace"
+    backup = tmp_path / "resources-backup"
+    dist = tmp_path / "dist"
+    environment = tmp_path / "wheel-environment"
+    target_home = tmp_path / "target-home"
+    write_marketplace(source_marketplace)
+    shutil.copytree(resources, backup)
+
+    try:
+        import_marketplace(source_marketplace, resources, expected_name="wheel-example")
+        shutil.rmtree(source_marketplace)
+        run(["poetry", "build", "--output", str(dist)], cwd=repository)
+        wheel = next(dist.glob("*.whl"))
+        with zipfile.ZipFile(wheel) as archive:
+            names = archive.namelist()
+            entry_points = next(
+                name for name in names if name.endswith("entry_points.txt")
+            )
+            assert "scripts/import_marketplace.py" not in names
+            assert (
+                archive.read(entry_points).decode().strip()
+                == (
+                    "[console_scripts]\n"
+                    "{{ project_slug }}={{ package_name }}.__main__:main\n"
+                ).strip()
+            )
+        run([sys.executable, "-m", "venv", str(environment)], cwd=repository)
+        binary_directory = environment / ("Scripts" if os.name == "nt" else "bin")
+        run(
+            [str(binary_directory / "pip"), "install", "--no-deps", str(wheel)],
+            cwd=repository,
+        )
+        output = run(
+            [str(binary_directory / "{{ project_slug }}"), "--json"],
+            cwd=tmp_path,
+            env={**os.environ, "HOME": str(target_home), "PYTHONPATH": ""},
+        )
+    finally:
+        shutil.rmtree(resources)
+        shutil.copytree(backup, resources)
+
+    result = json.loads(output)
+    catalog = (
+        target_home
+        / ".codex"
+        / "local-marketplaces"
+        / "wheel-example"
+        / ".agents"
+        / "plugins"
+        / "marketplace.json"
+    )
+    assert result["status"] == "installed"
+    assert json.loads(catalog.read_text())["name"] == "wheel-example"
+    assert (
+        target_home
+        / ".codex"
+        / "local-marketplaces"
+        / "wheel-example"
+        / "plugins"
+        / "alpha"
+        / "skill.md"
+    ).read_text() == "# Alpha\n"

@@ -1,17 +1,17 @@
 [project]
-name = "marketplace-publisher"
+name = "{{ project_slug }}"
 version = "0.1.0"
-description = "Package and publish a Codex personal local marketplace."
+description = "Install a packaged Codex personal local marketplace."
 authors = [{ name = "Anonymous" }]
 requires-python = ">=3.11,<4.0"
 
 [project.scripts]
-marketplace-publisher = "marketplace_publisher.__main__:main"
+{{ project_slug }} = "{{ package_name }}.__main__:main"
 
 [tool.poetry]
-packages = [{ include = "marketplace_publisher", from = "src" }]
+packages = [{ include = "{{ package_name }}", from = "src" }]
 include = [
-  { path = "src/marketplace_publisher/resources/**", format = ["sdist", "wheel"] },
+  { path = "src/{{ package_name }}/resources/**", format = ["sdist", "wheel"] },
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -19,7 +19,6 @@ pre-commit = "^4.0"
 pytest = "^8.0"
 ruff = "^0.12.0"
 rumdl = "^0.2.0"
-copier = "^9.17.1"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

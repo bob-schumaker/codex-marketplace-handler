@@ -1,0 +1,7 @@
+"""Import a local Codex marketplace into package resources."""
+
+from {{ package_name }}.importer import main
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

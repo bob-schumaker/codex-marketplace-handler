@@ -1,0 +1,30 @@
+# AGENTS.md
+
+## Project
+
+- Purpose: package and publish one embedded Codex local marketplace safely.
+- Stack: Python, Poetry, and a `src/` package layout.
+- The package must remain self-contained: import marketplace data with the
+  repository-only script before building a release.
+
+## Quality
+
+Run these commands before handoff:
+
+```sh
+poetry run ruff format --check .
+poetry run ruff check .
+poetry run rumdl fmt --check .
+poetry run rumdl check .
+poetry run pytest
+poetry build
+```
+
+## Boundaries
+
+- Never modify a local marketplace outside
+  `~/.codex/local-marketplaces/<marketplace-name>/`.
+- Validate marketplace data and plugin paths before publication.
+- Do not execute embedded plugin code during import or publication.
+- Keep `scripts/import_marketplace.py` repository-only; do not register it as
+  a runtime console script.
