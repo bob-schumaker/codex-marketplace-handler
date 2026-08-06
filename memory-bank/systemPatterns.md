@@ -4,7 +4,9 @@
 
 Load bundled marketplace files through `importlib.resources`, never relative
 to the caller's working directory. Package resources include the marketplace
-JSON and complete plugin directories.
+JSON and complete selected plugin directories. This embedded installation
+payload is the sole runtime source; it contains no absolute source-marketplace
+paths and remains usable after distribution as a wheel.
 
 ## Marketplace identity
 
