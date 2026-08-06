@@ -1,0 +1,29 @@
+# System Patterns
+
+## Package resources
+
+Load bundled marketplace files through `importlib.resources`, never relative
+to the caller's working directory. Package resources include the marketplace
+JSON and complete plugin directories.
+
+## Marketplace identity
+
+The canonical marketplace name is `marketplace-publisher`. The personal
+marketplace file is `~/.agents/plugins/marketplace.json`; its local plugin
+entries resolve from `~` to `./.codex/plugins/<plugin-name>`.
+
+## Merge contract
+
+- Treat the installed same-name marketplace as the base document.
+- Preserve unknown top-level metadata and unrelated plugin entries.
+- Add absent embedded plugins, leave identical entries, and replace changed
+  entries with the embedded versions.
+- Replace embedded `interface` metadata when it is supplied.
+- Maintain one entry per plugin name and update only package-supplied plugin
+  files without deleting extra destination files.
+
+## Safety
+
+Validate JSON and safe local paths before mutation; reject symlinks and paths
+that escape the expected plugin root. Write marketplace JSON atomically and do
+not run plugin code while publishing.
