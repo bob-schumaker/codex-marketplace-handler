@@ -3,14 +3,13 @@
 ## Package resources
 
 Load bundled marketplace files through `importlib.resources`, never relative
-to the caller's working directory. Package resources include the marketplace
-JSON and complete selected plugin directories. This embedded installation
-payload is the sole runtime source; it contains no absolute source-marketplace
-paths and remains usable after distribution as a wheel.
+to the caller's working directory. A product payload consists of the
+marketplace JSON and complete selected plugin directories, contains no absolute
+source-marketplace paths, and remains usable after distribution as a wheel.
 
-The current embedded payload is `bob-schumaker-codex-support`, with all 15
-catalog-selected plugins. Its source has one additional unreferenced directory;
-the importer correctly excludes it because only catalog entries define payload
+This source repository intentionally carries only empty resource-package
+markers. The repository-only importer is the supported way to add a selected
+marketplace payload for a product build; only catalog entries define payload
 ownership.
 
 ## Marketplace identity
