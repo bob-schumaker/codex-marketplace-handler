@@ -8,7 +8,11 @@ Codex local marketplace.
 ## Required behavior
 
 - The development importer selects a named local marketplace and optionally a
-  plugin subset, then embeds its catalog and plugin files as package data.
+  plugin subset (all plugins by default), then copies its catalog to
+  `resources/marketplace.json` and each selected plugin to
+  `resources/plugins/<plugin-name>/` as package data.
+- A published wheel is self-contained: runtime publication uses only its
+  embedded catalog and plugin trees, never the original import location.
 - The runtime executable derives the target name from embedded data and
   publishes to `~/.codex/local-marketplaces/<marketplace-name>/`.
 - If the target catalog exists with the same name, merge package-owned entries

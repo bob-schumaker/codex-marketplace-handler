@@ -17,7 +17,8 @@
 - Complete the ordered TDD tasks in
   `specs/001-embedded-local-marketplace.tasks.md`.
 - Import a real marketplace payload after the importer is implemented.
-- Build and verify an installed wheel with embedded resources.
+- Build and verify an installed wheel can publish from embedded resources after
+  the original import marketplace is unavailable.
 
 ## Risks and follow-ups
 
