@@ -1,0 +1,25 @@
+[project]
+name = "marketplace-publisher"
+version = "0.1.0"
+description = "Package and publish a Codex personal local marketplace."
+authors = [{ name = "Anonymous" }]
+requires-python = ">=3.11,<4.0"
+
+[tool.poetry]
+packages = [{ include = "marketplace_publisher", from = "src" }]
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.0"
+pytest = "^8.0"
+ruff = "^0.12.0"
+rumdl = "^0.2.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
