@@ -26,6 +26,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 target-version = "py311"
+extend-exclude = ["src/marketplace_publisher/resources/"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
