@@ -5,7 +5,8 @@
 Implement the behavior defined in
 `001-embedded-local-marketplace.md` as a Python 3.11 Poetry package. This
 plan does not add a Codex integration or any marketplace payload; the importer
-provides the payload from the user's personal marketplace.
+provides the payload from the user's personal marketplace. Its output is then
+fully embedded in the built distribution for standalone installation.
 
 ## Package structure
 
@@ -24,6 +25,8 @@ src/marketplace_publisher/
     __init__.py
     marketplace.json
     plugins/
+scripts/
+  import_marketplace.py
 tests/
   fixtures/
   test_validation.py
@@ -33,9 +36,12 @@ tests/
   test_packaging.py
 ```
 
-Add runtime and import console scripts in `[project.scripts]`. Configure Poetry
-to include every file below `src/marketplace_publisher/resources/` in wheels and
-sdists, including `.codex-plugin/plugin.json` files.
+Add only the runtime console script in `[project.scripts]`. Put the importer
+wrapper at `scripts/import_marketplace.py`; it is a repository-only development
+tool and is not an installed entry point. Configure Poetry to include every file
+below `src/marketplace_publisher/resources/` in wheels and sdists, including
+`.codex-plugin/plugin.json` files. The resulting wheel is the sole runtime
+installation source and must contain no absolute source-marketplace path.
 
 ## Components and responsibilities
 
@@ -45,7 +51,8 @@ sdists, including `.codex-plugin/plugin.json` files.
 | `paths.py` | Resolve marketplace-root paths from an injected home directory and target name; expose the catalog, plugin root, and state path. |
 | `validation.py` | Parse JSON and validate marketplace names, unique plugin names, local source types, and safe plugin paths. |
 | `filesystem.py` | Safe recursive file enumeration/copying, SHA-256 manifests, symlink rejection, temporary staging, and atomic JSON writes. |
-| `importer.py` | Select and validate a personal marketplace payload, stage the filtered resources, then replace package resources. |
+| `importer.py` | Repository-only import logic: read a named local marketplace, select all or requested plugins, then stage and replace the exact package-data payload. |
+| `scripts/import_marketplace.py` | Repository-only Poetry wrapper for the importer; never package or register it as a console script. |
 | `publisher.py` | Load package resources, evaluate conflicts, merge entries, copy allowed plugin files, and persist JSON/state. |
 | `cli.py` | Parse arguments, select human or JSON reporting, and map expected domain errors to non-zero exits. |
 | `__main__.py` | Delegate to the runtime CLI. |
@@ -53,6 +60,20 @@ sdists, including `.codex-plugin/plugin.json` files.
 The importer and publisher use the same parser and path validator. Runtime
 resource reads use `importlib.resources.files`; development imports use regular
 filesystem paths only.
+
+## Embedded installation payload
+
+`resources/marketplace.json` is the install descriptor, and
+`resources/plugins/` holds the exact selected plugin trees. Together they are
+the complete installation payload. During import, filter the catalog first,
+copy only its selected plugin directories, and reject any source value that
+would encode an absolute or source-marketplace-specific path. The importer
+maps the local catalog to `resources/marketplace.json` and each local
+`plugins/<plugin-name>/` directory to `resources/plugins/<plugin-name>/`.
+
+During publication, resolve an entry's `./plugins/<plugin-name>` path only
+against the package payload and the target marketplace root. Do not retain an
+import-time source root in models, state, JSON output, exceptions, or logs.
 
 ## Data and file contracts
 
@@ -98,11 +119,14 @@ error.
 
 ### Import
 
-1. Resolve the named marketplace-root catalog and load it without mutation.
+1. Resolve the named marketplace-root catalog and `plugins/` directory, then
+   load the catalog without mutation.
 2. Validate that its name equals the requested name and build the plugin index.
 3. Select all entries or the requested subset; reject unknown names.
-4. Validate and stage the selected plugin trees and a filtered marketplace JSON
-   in a temporary sibling directory under package resources.
+4. Validate and stage the selected plugin trees at
+   `resources/plugins/<plugin-name>/` and the filtered catalog at
+   `resources/marketplace.json` in a temporary sibling directory under package
+   resources.
 5. Replace the package resource payload only after staging completes. Leave the
    existing payload unchanged on validation or staging failure.
 
@@ -133,8 +157,8 @@ expected exceptions, writes a concise message or JSON error result, and exits
 non-zero. Let unexpected exceptions retain a traceback during development.
 
 Use `argparse` and four runtime flags: `--dry-run`, `--force`, `--json`, and
-`--verbose`. The importer accepts positional marketplace and plugin names and
-does not share runtime publishing flags.
+`--verbose`. The repository-only importer script accepts positional marketplace
+and plugin names and does not share runtime publishing flags.
 
 ## Test strategy
 
@@ -148,11 +172,13 @@ Tests are grouped by behavior:
 - importer selection and staged replacement;
 - publisher fresh install, merge, conflict, force, and dry-run behavior;
 - CLI human and JSON result behavior;
-- wheel installation and resource access in an isolated virtual environment.
+- wheel installation and self-contained publishing in an isolated virtual
+  environment after removing the original import source.
 
 Every behavior task follows the repository RED, GREEN, REFACTOR policy. The
 wheel test is the final integration gate because it verifies package-data
-configuration, console scripts, and `importlib.resources` together.
+configuration, console scripts, and `importlib.resources` together without the
+original source marketplace.
 
 ## Validation sequence
 

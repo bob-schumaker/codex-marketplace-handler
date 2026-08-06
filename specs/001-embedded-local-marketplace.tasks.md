@@ -27,10 +27,13 @@ Complete each behavior task with a documented RED, GREEN, and REFACTOR cycle.
 - [ ] RED: test import of all plugins, a requested subset, unknown plugin
   names, marketplace-name mismatch, missing plugin directories, and no-change
   behavior after a staging failure.
-- [ ] GREEN: implement staged package-resource replacement in `importer.py`.
+- [ ] GREEN: implement staged replacement from the local catalog to
+  `resources/marketplace.json` and each selected local plugin directory to
+  `resources/plugins/<plugin-name>/` in `importer.py`.
 - [ ] REFACTOR: make the filtered marketplace document and plugin copy share
   one selected-entry model; rerun `poetry run pytest tests/test_importer.py`.
-- [ ] Add and test `marketplace-publisher-import` script registration.
+- [ ] Add and test the repository-only `scripts/import_marketplace.py` wrapper;
+  confirm it is not registered as an installed console script.
 
 ## 4. Publisher: fresh and merged marketplaces
 
@@ -69,9 +72,9 @@ Complete each behavior task with a documented RED, GREEN, and REFACTOR cycle.
 
 ## 7. Distribution verification
 
-- [ ] RED: add a wheel-install integration test that proves the runtime loads
-  an embedded marketplace through `importlib.resources` rather than the source
-  checkout.
+- [ ] RED: add a wheel-install integration test that removes the original
+  marketplace source, installs the built wheel into an isolated environment,
+  and proves the runtime publishes from embedded `importlib.resources` data.
 - [ ] GREEN: correct Poetry package-data and script configuration until the
   installed-wheel test passes.
 - [ ] REFACTOR: remove any source-checkout assumptions from fixtures and tests.
