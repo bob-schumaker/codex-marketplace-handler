@@ -8,9 +8,10 @@ JSON and complete plugin directories.
 
 ## Marketplace identity
 
-The canonical marketplace name is `marketplace-publisher`. The personal
-marketplace file is `~/.agents/plugins/marketplace.json`; its local plugin
-entries resolve from `~` to `./.codex/plugins/<plugin-name>`.
+Each local marketplace is rooted at
+`~/.codex/local-marketplaces/<marketplace-name>/`. Its catalog is
+`.agents/plugins/marketplace.json`, and local plugin entries use
+`./plugins/<plugin-name>` relative to that root.
 
 ## Merge contract
 

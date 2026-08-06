@@ -2,18 +2,23 @@
 
 ## Current focus
 
-Project initialization and implementation planning.
+Implementation-ready specification; production code has not started.
 
 ## Current status
 
-- Done: top-level product/implementation spec authored.
-- Done: memory bank initialized.
-- Not started: Poetry project, embedded marketplace resources, publisher
-  implementation, and tests.
+- Done: main specification, technical plan, and TDD task list are authored.
+- Done: Poetry developer tooling and pre-commit hooks are configured.
+- Done: local marketplace layout is confirmed under
+  `~/.codex/local-marketplaces/<marketplace-name>/`.
+- Not started: package scaffold, importer, publisher, embedded resources, and
+  tests.
 
 ## Next steps
 
-1. Scaffold the Poetry `src/` package and console entry point.
-2. Add a minimal valid embedded marketplace and plugin fixture.
-3. Implement validation, merge, copy, and atomic-write behavior.
-4. Add the acceptance-focused test suite from the spec.
+1. Complete the package-bootstrap tasks using pytest fixtures and Poetry script
+   registration.
+2. Implement validation and the development importer through focused TDD
+   cycles.
+3. Implement publishing, state-based modification checks, and runtime CLI
+   behavior through focused TDD cycles.
+4. Verify an installed wheel can access imported package resources.
