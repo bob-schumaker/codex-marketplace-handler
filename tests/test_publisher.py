@@ -7,6 +7,7 @@ from marketplace_publisher.publisher import (
     MarketplaceConflictError,
     ModificationConflictError,
     PublisherError,
+    UnmanagedPluginConflictError,
     publish_marketplace,
 )
 
@@ -119,6 +120,30 @@ def test_repeated_publish_is_a_noop(tmp_path: Path) -> None:
     assert target_catalog(home).read_text() == before
 
 
+@pytest.mark.parametrize("first", ["alpha", "beta"])
+def test_independent_installers_preserve_each_others_state_records(
+    tmp_path: Path, first: str
+) -> None:
+    alpha_resources = tmp_path / "alpha-resources"
+    beta_resources = tmp_path / "beta-resources"
+    home = tmp_path / "home"
+    write_embedded(alpha_resources, {"alpha": "alpha"})
+    write_embedded(beta_resources, {"beta": "beta"})
+
+    resources_by_plugin = {"alpha": alpha_resources, "beta": beta_resources}
+    second = "beta" if first == "alpha" else "alpha"
+    publish_marketplace(resources_by_plugin[first], home)
+    publish_marketplace(resources_by_plugin[second], home)
+
+    state_path = target_root(home) / ".marketplace-publisher" / "state.json"
+    assert set(json.loads(state_path.read_text())["plugins"]) == {"alpha", "beta"}
+
+    result = publish_marketplace(alpha_resources, home)
+
+    assert result.status == "noop"
+    assert result.unchanged == ("alpha",)
+
+
 def test_rejects_different_name_catalog_without_changes(tmp_path: Path) -> None:
     resources = tmp_path / "resources"
     home = tmp_path / "home"
@@ -190,12 +215,54 @@ def test_unmanaged_destination_requires_force(tmp_path: Path) -> None:
     unmanaged.mkdir(parents=True)
     (unmanaged / "extra.txt").write_text("keep")
 
-    with pytest.raises(ModificationConflictError, match="modified"):
+    with pytest.raises(UnmanagedPluginConflictError, match="unmanaged"):
         publish_marketplace(resources, home)
 
     publish_marketplace(resources, home, force=True)
     assert (unmanaged / "extra.txt").read_text() == "keep"
     assert (unmanaged / "skill.md").read_text() == "alpha"
+
+
+def test_forced_adoption_preserves_other_installer_state_records(
+    tmp_path: Path,
+) -> None:
+    alpha_resources = tmp_path / "alpha-resources"
+    beta_resources = tmp_path / "beta-resources"
+    home = tmp_path / "home"
+    write_embedded(alpha_resources, {"alpha": "alpha"})
+    write_embedded(beta_resources, {"beta": "beta"})
+    publish_marketplace(alpha_resources, home)
+    unmanaged = target_root(home) / "plugins" / "beta"
+    unmanaged.mkdir(parents=True)
+    (unmanaged / "skill.md").write_text("local")
+
+    publish_marketplace(beta_resources, home, force=True)
+
+    state_path = target_root(home) / ".marketplace-publisher" / "state.json"
+    assert set(json.loads(state_path.read_text())["plugins"]) == {"alpha", "beta"}
+    assert (unmanaged / "skill.md").read_text() == "beta"
+
+
+def test_rejects_invalid_unrelated_state_record_without_mutation(
+    tmp_path: Path,
+) -> None:
+    alpha_resources = tmp_path / "alpha-resources"
+    beta_resources = tmp_path / "beta-resources"
+    home = tmp_path / "home"
+    write_embedded(alpha_resources, {"alpha": "alpha"})
+    write_embedded(beta_resources, {"beta": "beta"})
+    publish_marketplace(alpha_resources, home)
+    state_path = target_root(home) / ".marketplace-publisher" / "state.json"
+    invalid_state = json.loads(state_path.read_text())
+    invalid_state["plugins"]["other"] = {"files": "invalid"}
+    state_path.write_text(json.dumps(invalid_state))
+    before = state_path.read_text()
+
+    with pytest.raises(PublisherError, match="publisher state is invalid"):
+        publish_marketplace(beta_resources, home)
+
+    assert state_path.read_text() == before
+    assert not (target_root(home) / "plugins" / "beta").exists()
 
 
 def test_catalog_write_failure_preserves_existing_catalog(

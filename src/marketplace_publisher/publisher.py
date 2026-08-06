@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -18,6 +19,9 @@ from .paths import MarketplacePaths, PathSafetyError
 from .validation import MarketplaceValidationError, parse_marketplace_json
 
 
+_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
 class PublisherError(RuntimeError):
     """Base error for expected publisher failures."""
 
@@ -28,6 +32,10 @@ class MarketplaceConflictError(PublisherError):
 
 class ModificationConflictError(PublisherError):
     """Raised when package-owned destination files have been changed."""
+
+
+class UnmanagedPluginConflictError(ModificationConflictError):
+    """Raised when an existing plugin directory has no publisher state record."""
 
 
 @dataclass(frozen=True)
@@ -87,20 +95,18 @@ def publish_marketplace(
         installed, embedded
     )
     staged_plugins = _stage_embedded_plugins(resource_root, embedded)
-    state = _load_state(state_path)
+    state = _load_state(state_path, embedded.name)
     content_updates = _find_embedded_content_updates(
         state, staged_plugins, embedded.plugins
     )
     updated = _combine_names(updated, content_updates)
     unchanged = tuple(name for name in unchanged if name not in content_updates)
-    conflicts = _find_modification_conflicts(
+    modified, unmanaged = _find_modification_conflicts(
         plugin_root, state, embedded.plugins, staged_plugins
     )
+    conflicts = _combine_names(modified, unmanaged)
     if conflicts and not force:
-        names = ", ".join(conflicts)
-        raise ModificationConflictError(
-            f"package-owned plugin files were modified: {names}"
-        )
+        _raise_modification_conflict(modified, unmanaged)
 
     if conflicts:
         updated = _combine_names(updated, conflicts)
@@ -125,7 +131,8 @@ def publish_marketplace(
     try:
         _copy_staged_plugins(staged_plugins, plugin_root, embedded.plugins)
         _atomic_write_json(
-            state_path, _build_state(embedded.name, staged_plugins, embedded.plugins)
+            state_path,
+            _build_state(state, embedded.name, staged_plugins, embedded.plugins),
         )
         state_written = True
         _atomic_write_json(catalog_path, merged_document)
@@ -221,23 +228,39 @@ def _find_modification_conflicts(
     state: dict[str, Any],
     entries: tuple[PluginEntry, ...],
     staged_plugins: Path,
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
     state_plugins = state.get("plugins", {})
     if not isinstance(state_plugins, dict):
         raise PublisherError("publisher state is invalid")
-    conflicts: list[str] = []
+    modified: list[str] = []
+    unmanaged: list[str] = []
     for entry in entries:
         destination = plugin_root / entry.name
         previous = state_plugins.get(entry.name)
         if destination.exists() and previous is None:
-            conflicts.append(entry.name)
+            unmanaged.append(entry.name)
             continue
         if previous is not None and not _matches_state(destination, previous):
-            conflicts.append(entry.name)
+            modified.append(entry.name)
             continue
         if destination.is_symlink():
-            conflicts.append(entry.name)
-    return conflicts
+            modified.append(entry.name)
+    return modified, unmanaged
+
+
+def _raise_modification_conflict(modified: list[str], unmanaged: list[str]) -> None:
+    if unmanaged and not modified:
+        raise UnmanagedPluginConflictError(
+            f"unmanaged plugin directories: {', '.join(unmanaged)}"
+        )
+    if modified and not unmanaged:
+        raise ModificationConflictError(
+            f"package-owned plugin files were modified: {', '.join(modified)}"
+        )
+    raise ModificationConflictError(
+        "package-owned plugin files were modified: "
+        f"{', '.join(modified)}; unmanaged plugin directories: {', '.join(unmanaged)}"
+    )
 
 
 def _find_embedded_content_updates(
@@ -288,29 +311,64 @@ def _copy_staged_plugins(
 
 
 def _build_state(
-    marketplace_name: str, staged_plugins: Path, entries: tuple[PluginEntry, ...]
+    existing_state: dict[str, Any],
+    marketplace_name: str,
+    staged_plugins: Path,
+    entries: tuple[PluginEntry, ...],
 ) -> dict[str, Any]:
-    return {
-        "marketplace": marketplace_name,
-        "plugins": {
+    plugins = copy.deepcopy(existing_state["plugins"])
+    plugins.update(
+        {
             entry.name: {"files": _tree_digests(staged_plugins / entry.name)}
             for entry in entries
-        },
+        }
+    )
+    return {
+        "marketplace": marketplace_name,
+        "plugins": plugins,
     }
 
 
-def _load_state(path: Path) -> dict[str, Any]:
+def _load_state(path: Path, expected_marketplace: str) -> dict[str, Any]:
     if not path.exists():
-        return {"plugins": {}}
+        return {"marketplace": expected_marketplace, "plugins": {}}
     if path.is_symlink():
         raise PublisherError("publisher state must not be a symlink")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise PublisherError("publisher state is invalid") from error
-    if not isinstance(data, dict):
+    if not _is_valid_state(data, expected_marketplace):
         raise PublisherError("publisher state is invalid")
     return data
+
+
+def _is_valid_state(data: object, expected_marketplace: str) -> bool:
+    if (
+        not isinstance(data, dict)
+        or data.get("marketplace") != expected_marketplace
+        or not isinstance(data.get("plugins"), dict)
+    ):
+        return False
+    for plugin_name, plugin_state in data["plugins"].items():
+        if not isinstance(plugin_name, str) or not plugin_name:
+            return False
+        if not isinstance(plugin_state, dict) or not isinstance(
+            plugin_state.get("files"), dict
+        ):
+            return False
+        for relative_path, digest in plugin_state["files"].items():
+            path = Path(relative_path) if isinstance(relative_path, str) else None
+            if (
+                path is None
+                or not relative_path
+                or path.is_absolute()
+                or ".." in path.parts
+                or not isinstance(digest, str)
+                or not _SHA256_PATTERN.fullmatch(digest)
+            ):
+                return False
+    return True
 
 
 def _copy_regular_tree(
