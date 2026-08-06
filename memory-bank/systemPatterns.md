@@ -8,6 +8,11 @@ JSON and complete selected plugin directories. This embedded installation
 payload is the sole runtime source; it contains no absolute source-marketplace
 paths and remains usable after distribution as a wheel.
 
+The current embedded payload is `bob-schumaker-codex-support`, with all 15
+catalog-selected plugins. Its source has one additional unreferenced directory;
+the importer correctly excludes it because only catalog entries define payload
+ownership.
+
 ## Marketplace identity
 
 Each local marketplace is rooted at
@@ -37,3 +42,10 @@ not run plugin code while publishing.
 distribution, console script, and Python package while retaining the
 repository-only importer and empty resource-package markers. It intentionally
 does not render `memory-bank/`, `specs/`, or any marketplace payload.
+
+## Payload formatting boundary
+
+Imported plugin trees are copied as-is. Ruff and Rumdl exclude the package
+resource tree so project quality checks do not rewrite bundled plugin source or
+documentation. The Copier template renders matching exclusions for future
+payload-bearing installers.
