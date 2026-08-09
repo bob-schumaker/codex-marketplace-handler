@@ -24,6 +24,10 @@ exist.
   checkout.
 - Register `marketplace-publisher` as the runtime console script, mapped to
   `marketplace_publisher.__main__:main`.
+- Include `marketplace_publisher/__main__.py` in the installed package so
+  `python -m marketplace_publisher` invokes `raise SystemExit(main())` (or an
+  equivalent exit-status-preserving entry point) and has the same runtime
+  behavior as `marketplace-publisher`.
 - Provide `scripts/import_marketplace.py` as a repository-only development
   script that imports a marketplace payload into package resources. Do not
   expose it as an installed console script.
@@ -170,7 +174,14 @@ the embedded document supplies an `interface`, it replaces the installed
 
 ```text
 marketplace-publisher [--dry-run] [--force] [--json] [--verbose]
+python -m marketplace_publisher [--dry-run] [--force] [--json] [--verbose]
 ```
+
+Both invocation forms run the same command implementation, accept the same
+arguments, and preserve the same exit status and standard-output/
+standard-error semantics. Usage, help, and diagnostic text may differ only in
+the displayed invoked program name; in `--json` mode, the parsed JSON result
+must be identical.
 
 - `--dry-run` performs every read, validation, merge, and modification check
   but writes no marketplace, plugin, or publisher-state files.
@@ -228,6 +239,11 @@ Use pytest and temporary home directories. Tests must cover:
 - a simulated copy or atomic-write failure does not corrupt the existing JSON;
 - an installed wheel publishes correctly after the original source marketplace
   is absent, proving the embedded payload is self-contained.
+- the installed package includes `marketplace_publisher/__main__.py`, and
+  `python -m marketplace_publisher` invokes `main()` with its exit status
+  preserved. Test module invocation from an installed wheel after the original
+  source marketplace is absent, including an invalid invocation that exits
+  non-zero.
 
 Every behavior-changing implementation task follows RED, GREEN, and REFACTOR:
 
@@ -288,6 +304,11 @@ than a modified package-owned-file conflict and makes no changes.
 Given `--dry-run`, when any publication outcome is evaluated, then no files are
 written. Given `--json`, the command emits one result object matching the
 runtime command contract.
+
+Given a wheel installed into an isolated environment with no source checkout,
+when `python -m marketplace_publisher` runs against a valid embedded
+marketplace, then it publishes the same documented result as
+`marketplace-publisher` and preserves its exit status.
 
 ## Implementation artifacts
 

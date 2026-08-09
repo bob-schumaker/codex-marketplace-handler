@@ -15,6 +15,8 @@ This directory records durable context for future work on
 ## Conventions
 
 - Keep these notes concise, factual, and current; they are not a chat log.
+- Treat `memory-bank/` as the project-local memory source; use Obsidian memory
+  only for an explicitly requested Obsidian-vault task.
 - Start resumed work with `activeContext.md` and `progress.md`.
 - Refresh the smallest affected set after a meaningful implementation or
   product-direction change.
