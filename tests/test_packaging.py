@@ -85,11 +85,31 @@ def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) ->
             cwd=tmp_path,
             env={**os.environ, "HOME": str(target_home), "PYTHONPATH": ""},
         )
+        module_home = tmp_path / "module-home"
+        module_output = run(
+            [str(binary_directory / "python"), "-m", "marketplace_publisher", "--json"],
+            cwd=tmp_path,
+            env={**os.environ, "HOME": str(module_home), "PYTHONPATH": ""},
+        )
+        invalid_module_invocation = subprocess.run(
+            [
+                str(binary_directory / "python"),
+                "-m",
+                "marketplace_publisher",
+                "--unknown",
+            ],
+            cwd=tmp_path,
+            env={**os.environ, "HOME": str(module_home), "PYTHONPATH": ""},
+            text=True,
+            capture_output=True,
+            check=False,
+        )
     finally:
         shutil.rmtree(resources)
         shutil.copytree(backup, resources)
 
     result = json.loads(output)
+    module_result = json.loads(module_output)
     catalog = (
         target_home
         / ".codex"
@@ -99,8 +119,20 @@ def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) ->
         / "plugins"
         / "marketplace.json"
     )
+    module_catalog = (
+        module_home
+        / ".codex"
+        / "local-marketplaces"
+        / "wheel-example"
+        / ".agents"
+        / "plugins"
+        / "marketplace.json"
+    )
     assert result["status"] == "installed"
+    assert module_result == result
+    assert invalid_module_invocation.returncode != 0
     assert json.loads(catalog.read_text())["name"] == "wheel-example"
+    assert json.loads(module_catalog.read_text())["name"] == "wheel-example"
     assert (
         target_home
         / ".codex"
