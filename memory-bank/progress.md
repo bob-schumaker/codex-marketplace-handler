@@ -4,6 +4,9 @@
 
 - A complete implementation specification exists at
   `specs/001-embedded-local-marketplace.md`.
+- The specification requires an installed `__main__.py` so
+  `python -m marketplace_publisher` shares the console command's behavior and
+  exit status.
 - The specification has an implementation plan and TDD task list.
 - Poetry configuration and Ruff/Rumdl pre-commit tooling are configured.
 - The importer, publisher, state protection, CLI, and self-contained wheel

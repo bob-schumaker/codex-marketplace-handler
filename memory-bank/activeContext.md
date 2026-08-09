@@ -2,8 +2,11 @@
 
 ## Current focus
 
-The publisher implementation and Copier template are complete. This source
-repository intentionally contains no embedded marketplace payload.
+The publisher implementation and Copier template are complete. The current
+specification also requires the installed package to support
+`python -m marketplace_publisher` through an exit-status-preserving
+`__main__.py`. This source repository intentionally contains no embedded
+marketplace payload.
 
 ## Current status
 
@@ -20,6 +23,8 @@ repository intentionally contains no embedded marketplace payload.
   `~/.codex/local-marketplaces/<marketplace-name>/`.
 - Done: package-resource exclusions keep Ruff and Rumdl from reformatting a
   future imported plugin payload.
+- Done: the specification defines console and module CLI invocation parity,
+  including installed-wheel and non-zero failure coverage.
 
 ## Next steps
 
