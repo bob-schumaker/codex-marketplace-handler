@@ -12,11 +12,19 @@ from .publisher import (
     publish_marketplace,
 )
 from .router_plugin_packager import PackagerError, main as package_router_plugin
+from .marketplace_publish import (
+    MarketplacePublishError,
+    assemble_generated_plugin,
+    publish_embedded_generated_marketplace,
+    publish_generated_plugin,
+    stage_marketplace_payload,
+)
 
 __all__ = [
     "ImportError",
     "Marketplace",
     "MarketplaceConflictError",
+    "MarketplacePublishError",
     "ModificationConflictError",
     "PluginEntry",
     "PackagerError",
@@ -25,6 +33,10 @@ __all__ = [
     "UnmanagedPluginConflictError",
     "import_marketplace",
     "package_router_plugin",
+    "assemble_generated_plugin",
+    "publish_embedded_generated_marketplace",
     "publish_embedded_marketplace",
+    "publish_generated_plugin",
     "publish_marketplace",
+    "stage_marketplace_payload",
 ]
