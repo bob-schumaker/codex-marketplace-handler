@@ -2,34 +2,27 @@
 
 ## Current focus
 
-The publisher implementation and Copier template are complete. The current
-specification also requires the installed package to support
-`python -m marketplace_publisher` through an exit-status-preserving
-`__main__.py`. This source repository intentionally contains no embedded
-marketplace payload.
+Maintain the implemented `marketplace-installer` library and its
+`marketplace-publisher` Copier product as one versioned contract.
 
 ## Current status
 
-- Done: main specification, technical plan, and TDD task list are authored.
-- Done: Poetry developer tooling, package setup, and pre-commit hooks are
-  configured.
-- Done: repository-only importer, publisher, state checks, runtime CLI, and
-  self-contained wheel verification are implemented through TDD.
-- Done: a Copier template renders a custom-named, payload-free marketplace
-  installer without this repository's memory-bank or specification artifacts.
-- Done: an imported 15-plugin payload was verified in a built wheel and then
-  removed; source control retains only empty resource-package markers.
-- Done: local marketplace layout is confirmed under
-  `~/.codex/local-marketplaces/<marketplace-name>/`.
-- Done: package-resource exclusions keep Ruff and Rumdl from reformatting a
-  future imported plugin payload.
-- Done: the specification defines console and module CLI invocation parity,
-  including installed-wheel and non-zero failure coverage.
+- Done: `marketplace-installer` version `0.1.1` contains the v3 router-plugin
+  packager closure, canonical assembly, portable validation, package-resource
+  staging, embedded publication, integrity manifests, and regression suites.
+- Done: the Copier template replaces the legacy importer with
+  `scripts/build_marketplace.py`; it builds a generated plugin from explicit
+  repository inputs and stages the canonical payload in package resources.
+- Done: rendered CLI, Copier migration, and offline two-wheel tests cover the
+  v3 payload contract. The dedicated first-user-flow regression suite imports
+  the library directly, so the library now owns that behavioral coverage.
+- Done: specs 001–003 now state their historical/current authority boundaries.
 
 ## Next steps
 
-1. In a product repository, use `poetry run python scripts/import_marketplace.py
-   <marketplace-name>` to add a release payload intentionally.
-2. Build and publish the resulting payload-bearing distribution when desired.
-3. Use `poetry run copier copy copier-template <destination>` when a clean,
-   custom-named installer repository is needed.
+1. Publish `marketplace-installer` `0.1.1` to the approved PyPI release path
+   before downstream Copier products adopt the generated-payload dependency.
+2. Authorize and perform downstream adoption separately; generated products
+   must use the bounded `>=0.1.1,<0.2.0` dependency.
+3. Preserve direct and Copier integration coverage when changing the shared
+   installer contract.

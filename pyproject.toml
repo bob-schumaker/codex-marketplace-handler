@@ -1,18 +1,23 @@
 [project]
-name = "marketplace-publisher"
-version = "0.1.0"
-description = "Package and publish a Codex personal local marketplace."
+name = "marketplace-installer"
+version = "0.1.1"
+description = "Package and install Codex router plugins into a marketplace."
 authors = [{ name = "Anonymous" }]
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<4.0"
+dependencies = ["packaging==26.3", "PyYAML==6.0.3"]
 
 [project.scripts]
-marketplace-publisher = "marketplace_publisher.__main__:main"
+marketplace-installer = "marketplace_installer.router_plugin_packager:main"
+router-plugin-packager = "marketplace_installer.router_plugin_packager:main"
+router-plugin-first-user-flow = "marketplace_installer.router_plugin_first_user_flow:main"
+mcp-plugin-packaging-customer-flow = "marketplace_installer.mcp_plugin_packaging_customer_flow:main"
+router-plugin-packager-setup = "marketplace_installer.router_plugin_packager_setup:main"
+plugin-runtime-lifecycle = "marketplace_installer.plugin_runtime_lifecycle:main"
+codex-packaging-toolchain = "marketplace_installer.codex_packaging_toolchain_launcher:main"
 
 [tool.poetry]
-packages = [{ include = "marketplace_publisher", from = "src" }]
-include = [
-  { path = "src/marketplace_publisher/resources/**", format = ["sdist", "wheel"] },
-]
+packages = [{ include = "marketplace_installer", from = "src" }]
+include = ["src/marketplace_installer/*.json"]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0"
@@ -23,10 +28,10 @@ copier = "^9.17.1"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: marks tests that reach a real service"]
 
 [tool.ruff]
-target-version = "py311"
-extend-exclude = ["src/marketplace_publisher/resources/"]
+target-version = "py312"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

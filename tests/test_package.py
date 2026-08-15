@@ -1,4 +1,4 @@
 def test_package_imports() -> None:
-    import marketplace_publisher
+    import marketplace_installer
 
-    assert marketplace_publisher is not None
+    assert marketplace_installer is not None

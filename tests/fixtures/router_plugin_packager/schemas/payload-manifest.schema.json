@@ -1,0 +1,39 @@
+{
+  "$id": "https://example.invalid/router-plugin-payload-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Router plugin payload manifest",
+  "type": "object",
+  "required": ["format_version", "packager_format_version", "payload_fingerprint", "entries"],
+  "properties": {
+    "format_version": {"const": 1},
+    "packager_format_version": {"const": 1},
+    "payload_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "relative_output_path",
+          "source_reference",
+          "acquisition_mode",
+          "file_type",
+          "file_mode",
+          "symlink_policy",
+          "content_hash",
+          "ownership_role"
+        ],
+        "properties": {
+          "relative_output_path": {"type": "string", "minLength": 1},
+          "source_reference": {"type": "string", "minLength": 1},
+          "acquisition_mode": {"type": "string", "minLength": 1},
+          "file_type": {"const": "file"},
+          "file_mode": {"type": "string", "pattern": "^0o[0-7]{3,4}$"},
+          "symlink_policy": {"const": "forbidden"},
+          "content_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "ownership_role": {"type": "string", "minLength": 1},
+          "ownership_class": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

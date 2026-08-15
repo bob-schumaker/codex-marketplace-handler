@@ -1,8 +1,14 @@
 # Implementation Plan: Embedded Local Marketplace Publisher
 
+> **Status: archived.** This implementation plan describes the superseded v1
+> importer-based product. It is retained as history only; the current
+> authoritative specifications are
+> [002](002-marketplace-installer-library-and-baseline.md) and
+> [003](003-generated-plugin-copier-publisher.md).
+
 ## Purpose
 
-Implement the behavior defined in
+This historical plan originally implemented the behavior defined in
 `001-embedded-local-marketplace.md` as a Python 3.11 Poetry package. This
 plan does not add a Codex integration or any marketplace payload; the importer
 provides the payload from the user's personal marketplace. Its output is then

@@ -20,3 +20,7 @@ This directory records durable context for future work on
 - Start resumed work with `activeContext.md` and `progress.md`.
 - Refresh the smallest affected set after a meaningful implementation or
   product-direction change.
+- Treat [specs/003-generated-plugin-copier-publisher.md](../specs/003-generated-plugin-copier-publisher.md)
+  as the current generated-payload product contract. Specs 001 and its task
+  artifacts are archived history; spec 002 records the completed two-artifact
+  and retained direct-library baseline.

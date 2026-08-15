@@ -1,0 +1,34 @@
+_min_copier_version: "9.0.0"
+_templates_suffix: .jinja
+_subdirectory: copier-template
+_answers_file: .copier-answers.yml
+_exclude:
+  - __pycache__
+  - "*.pyc"
+
+project_name:
+  type: str
+  help: Human-readable name for this marketplace publisher.
+  default: Marketplace Publisher
+
+project_slug:
+  type: str
+  help: Distribution and console-script name (lowercase letters, digits, and hyphens).
+  default: marketplace-publisher
+  validator: >-
+    {% if not project_slug | regex_search('^[a-z0-9][a-z0-9-]*$') %}
+    Use lowercase letters, digits, and hyphens; start with a letter or digit.
+    {% elif project_slug | lower | replace('_', '-') | replace('.', '-') | regex_replace('[-]+', '-') == 'marketplace-installer' %}
+    The product distribution must not be marketplace-installer.
+    {% endif %}
+
+package_name:
+  type: str
+  help: Python import package name.
+  default: "{{ project_slug.replace('-', '_') }}"
+  validator: >-
+    {% if not package_name | regex_search('^[a-z_][a-z0-9_]*$') %}
+    Use a valid lowercase Python identifier.
+    {% elif package_name == 'marketplace_installer' %}
+    The product package must not be marketplace_installer.
+    {% endif %}

@@ -1,0 +1,28 @@
+{
+  "$id": "https://example.invalid/router-plugin-pregenerated-provenance.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pre-generated payload provenance",
+  "type": "object",
+  "required": [
+    "artifact_path",
+    "source_digest",
+    "generator_identity",
+    "generator_version",
+    "generator_parameters",
+    "freshness_basis",
+    "compatibility"
+  ],
+  "properties": {
+    "artifact_path": {"type": "string", "minLength": 1},
+    "source_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "generator_identity": {"type": "string", "minLength": 1},
+    "generator_version": {"type": "string", "minLength": 1},
+    "generator_parameters": {"type": "object"},
+    "freshness_basis": {"enum": ["content-hash", "tree-hash"]},
+    "compatibility": {
+      "type": "object",
+      "required": ["source_root"],
+      "properties": {"source_root": {"type": "string", "minLength": 1}}
+    }
+  }
+}

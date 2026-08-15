@@ -1,0 +1,22 @@
+"""Product adapter for publishing this package's embedded resources."""
+
+from pathlib import Path
+
+from marketplace_installer.marketplace_publish import (
+    MarketplacePublishError,
+    publish_embedded_generated_marketplace as _publish_embedded_generated_marketplace,
+)
+
+__all__ = [
+    "MarketplacePublishError",
+    "publish_embedded_marketplace",
+]
+
+
+def publish_embedded_marketplace(
+    home: Path | None = None, *, dry_run: bool = False, force: bool = False
+) -> dict[str, object]:
+    """Publish this product's embedded marketplace resources."""
+    return _publish_embedded_generated_marketplace(
+        f"{__package__}.resources", home=home, dry_run=dry_run, force=force
+    )
