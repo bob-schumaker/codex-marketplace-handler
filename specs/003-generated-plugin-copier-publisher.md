@@ -14,7 +14,9 @@ plugin to a Codex marketplace or copying one from `~/.codex`.
 This specification extends
 `002-marketplace-installer-library-and-baseline.md`. Where the two conflict,
 this specification controls generated-plugin packaging and the Copier product
-resource layout.
+resource layout. It is the current authority for those areas; 001 is archived
+historical context and 002 remains authoritative only for its nonconflicting
+two-artifact and direct-library boundary.
 
 The library has two consumers, not two implementations. This work adds the
 second consumer and must preserve the first.
@@ -418,19 +420,13 @@ not add product-specific provenance metadata, avoiding a second payload form.
 
 ## Dependency and development contract
 
-Define `MIN_GENERATED_PAYLOAD_LIBRARY_VERSION` as the first released
-`marketplace-installer` version implementing every public seam in this
-specification. Before the template slice, the implementation selects its
-concrete value by updating the root `[project].version`; the rendered
-`pyproject.toml.jinja` declares that exact value as its lower bound. A root
-test parses the root TOML, rendered TOML, and both built-wheel METADATA files
-to assert that the library version, template lower bound, and product
-`Requires-Dist` agree. The rendered `pyproject.toml`
-declares
-`marketplace-installer>=MIN_GENERATED_PAYLOAD_LIBRARY_VERSION` with an upper
-bound at the next breaking compatibility boundary; it must not admit a prior
-library version, render path/editable dependencies, or render credentials.
-Copier adoption is blocked until that release exists.
+`MIN_GENERATED_PAYLOAD_LIBRARY_VERSION` is `0.1.1`, the first
+`marketplace-installer` release containing every public seam in this
+specification. The root `[project].version`, rendered `pyproject.toml.jinja`,
+and product wheel metadata must agree on
+`marketplace-installer>=0.1.1,<0.2.0`. The template must not admit a prior
+library version or render path/editable dependencies or credentials. Copier
+adoption is blocked until that release exists.
 
 The root project, Copier template, and rendered product require Python
 `>=3.12,<4.0`, matching `marketplace-installer`. Root and rendered Ruff

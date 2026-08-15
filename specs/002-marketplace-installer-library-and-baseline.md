@@ -1,5 +1,19 @@
 # Marketplace Installer Library and Copier Template
 
+## Status and precedence
+
+This document is the completed two-artifact baseline. It governs the
+repository layout, the reusable `marketplace-installer` distribution, and the
+retained direct legacy publication/import APIs. It supersedes the corresponding
+structural portions of [001](001-embedded-local-marketplace.md).
+
+[003](003-generated-plugin-copier-publisher.md) is the current authority for
+the Copier product's embedded payload layout, repository build script, v3
+public payload APIs, installed publication behavior, template dependency
+metadata, and generated-payload verification. Where this document describes
+the pre-v3 importer-based template, treat it as historical baseline rather
+than a current requirement.
+
 ## Goal
 
 Restructure this repository into two independently built artifacts while it
@@ -72,7 +86,7 @@ not part of rendered products.
 ### `marketplace-installer`
 
 The top-level Poetry project builds distribution `marketplace-installer` with
-import package `marketplace_installer`. Its initial package version is `0.1.0`
+import package `marketplace_installer`. Its current package version is `0.1.1`
 and it follows semantic versioning. Publishing that version is separate release
 work.
 
@@ -106,7 +120,7 @@ commands above are library entry points, not product entry points.
 
 The established `publish_marketplace(resource_root, home, ...)` behavior,
 publisher-state format, and documented error behavior remain compatible.
-Version `0.1.0` retains the existing shared state location
+Version `0.1.1` retains the existing shared state location
 `<home>/.codex/local-marketplaces/<name>/.marketplace-publisher/state.json`
 and its JSON format. There is no state-directory rename or migration in this
 work; regression tests seed that legacy state and preserve its modified-file
@@ -164,16 +178,17 @@ The canonical public import surface is the `marketplace_installer` package root:
 
 | Category | Required exports |
 | --- | --- |
-| Operations | `publish_marketplace`, `publish_embedded_marketplace`, `import_marketplace` |
+| Legacy direct operations | `publish_marketplace`, `publish_embedded_marketplace`, `import_marketplace` |
+| Generated-payload operations | `assemble_generated_plugin`, `publish_generated_plugin`, `publish_embedded_generated_marketplace`, `stage_marketplace_payload` |
 | Models/results | `Marketplace`, `PluginEntry`, `PublishResult` |
-| Errors | `PublisherError`, `MarketplaceConflictError`, `ModificationConflictError`, `UnmanagedPluginConflictError`, `ImportError` |
+| Errors | `PublisherError`, `MarketplaceConflictError`, `ModificationConflictError`, `UnmanagedPluginConflictError`, `ImportError`, `MarketplacePublishError` |
 
 Library-wheel consumer tests must import these symbols from the package root.
 The Copier template may import only these public paths.
 `PublisherError` and its three listed subclasses are the complete supported
 publish-error surface; `ImportError` is the complete supported import-error
 surface. `MarketplaceValidationError`, `PathSafetyError`, `MarketplacePaths`,
-and parsing/path-validation helpers are library-private in version `0.1.0`.
+and parsing/path-validation helpers are library-private in version `0.1.1`.
 
 ### `marketplace-publisher` Copier template
 
@@ -188,7 +203,9 @@ Render tests cover defaults, a valid custom name, and rejected
 `marketplace-installer`, `marketplace--installer`, and
 `marketplace_installer` collisions.
 
-The Copier template owns only product-specific concerns:
+The following is the pre-v3 Copier-template baseline. Its importer and
+stateful-publisher details are superseded by 003; the remaining product-boundary
+principles still apply. The Copier template owns only product-specific concerns:
 
 - embedded `marketplace.json` and plugin resources;
 - the product console script and `__main__` entry point;
@@ -210,14 +227,12 @@ No validation, filesystem, merge, state, or error implementation may remain in
 the adapter. A non-default rendered `package_name` test proves that it does not
 hard-code `marketplace_publisher.resources`.
 
-For version `0.1.0`, `publisher.py` and `importer.py` remain thin deprecated
-compatibility adapters for the current product-module import paths. They
-re-export their current public operations, models/results, and error types from
-the canonical `marketplace_installer` surface; only the embedded-publisher
-adapter and repository resource lookup may add product-specific behavior. An
-import-only compatibility test covers these legacy paths.
+For the pre-v3 baseline, `publisher.py` and `importer.py` were thin deprecated
+compatibility adapters. Under 003, the rendered `importer.py` adapter and its
+test are removed; the retained `publisher.py` adapter exposes only the v3
+embedded-generated-payload operation and `MarketplacePublishError`.
 
-The Copier template declares `marketplace-installer >=0.1.0,<0.2.0` through default
+The Copier template declares `marketplace-installer >=0.1.1,<0.2.0` through default
 PyPI resolution. Its rendered `pyproject.toml` declares that exact requirement
 in PEP 621 `[project].dependencies`; `[tool.poetry]` contains only
 Poetry-specific package and include configuration. The Copier template
@@ -278,7 +293,7 @@ their library tests move with the implementation.
 3. Extract the library and public seams. A reviewed migration manifest then
    permits only its `allowed_changes`: enumerated shared-module/test removals,
    thin integration files, and the rendered
-   `pyproject.toml` addition of `marketplace-installer >=0.1.0,<0.2.0` plus
+   `pyproject.toml` addition of `marketplace-installer >=0.1.1,<0.2.0` plus
    removal of extracted-package declarations. Rendered `poetry.lock` must be
    absent. Root-library lock metadata, if retained, is outside the rendered
    product comparison scope.
@@ -304,7 +319,7 @@ Tests must establish all of the following:
 
 - the frozen fixture, relocation comparison, and post-extraction comparison
   controls above pass;
-- the rendered fixture retains importer, publisher, CLI, and wheel behavior;
+- the rendered fixture retains the v3 publisher, CLI, build-script, and wheel behavior;
 - direct library tests cover validation, symlink safety, catalog merge,
   publisher-state conflicts, dry runs, and write-failure recovery;
 - the public resource-location API works from unpacked resources and an
@@ -323,7 +338,7 @@ Tests must establish all of the following:
   The environment's Python and console script publish only under that home,
   `pip check` passes, both modules resolve from site-packages, and the product
   wheel contains exactly one no-extra/no-marker `marketplace-installer`
-  `Requires-Dist` with `SpecifierSet(">=0.1.0,<0.2.0")` parsed using the direct
+  `Requires-Dist` with `SpecifierSet(">=0.1.1,<0.2.0")` parsed using the direct
   test dependency `packaging`; and
 - `.copier-answers.yml` records the resolved full commit SHA and VCS source;
   root `copier.yml` records `_subdirectory: copier-template`; and the rendered
