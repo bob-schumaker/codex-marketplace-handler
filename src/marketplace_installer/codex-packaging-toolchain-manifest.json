@@ -1,0 +1,256 @@
+{
+  "dependency_closures": {
+    "launcher": {
+      "entrypoint": "codex_packaging_toolchain_launcher.py",
+      "requirements": [
+        "PyYAML==6.0.3",
+        "packaging==26.3"
+      ]
+    },
+    "mcp-customer-flow": {
+      "entrypoint": "mcp_plugin_packaging_customer_flow.py",
+      "requirements": [
+        "packaging==26.3",
+        "PyYAML==6.0.3"
+      ]
+    },
+    "mcp-setup": {
+      "entrypoint": "router_plugin_packager_setup.py",
+      "requirements": [
+        "packaging==26.3",
+        "PyYAML==6.0.3"
+      ]
+    },
+    "router-first-user-flow": {
+      "entrypoint": "router_plugin_first_user_flow.py",
+      "requirements": [
+        "packaging==26.3",
+        "PyYAML==6.0.3"
+      ]
+    },
+    "router-packager": {
+      "entrypoint": "router_plugin_packager.py",
+      "requirements": [
+        "packaging==26.3",
+        "PyYAML==6.0.3"
+      ]
+    },
+    "runtime-lifecycle": {
+      "entrypoint": "plugin_runtime_lifecycle.py",
+      "requirements": []
+    }
+  },
+  "files": [
+    {
+      "mode": "0644",
+      "path": "codex_packaging_toolchain_launcher.py",
+      "role": "launcher",
+      "sha256": "sha256:9f6a0d11d6e1880ef0c8a5bcf0ad778814ae00658f35d6e4298543e1c8af2ec6",
+      "source": "marketplace_installer/codex_packaging_toolchain_launcher.py"
+    },
+    {
+      "layer1_protocol": ">=1.0.0,<2.0.0",
+      "mode": "0644",
+      "path": "router_plugin_first_user_flow.py",
+      "role": "layer1-entrypoint",
+      "sha256": "sha256:91004f21ceee850fb2b79e61966a5f5730415d156be33eac99c1135d3e186d9b",
+      "source": "marketplace_installer/router_plugin_first_user_flow.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager.py",
+      "role": "layer1-entrypoint",
+      "sha256": "sha256:d612b037c8d64f2d26251a634a746badb825fec429af2d9ca9cf2b18b40bb3af",
+      "source": "marketplace_installer/router_plugin_packager.py"
+    },
+    {
+      "layer1_protocol": ">=1.0.0,<2.0.0",
+      "mode": "0644",
+      "path": "mcp_plugin_packaging_customer_flow.py",
+      "role": "layer3-entrypoint",
+      "sha256": "sha256:17c3d7ad659568685b515745181618fe36821271672e9ff444d85dbd382a3017",
+      "source": "marketplace_installer/mcp_plugin_packaging_customer_flow.py"
+    },
+    {
+      "layer1_protocol": ">=1.0.0,<2.0.0",
+      "mode": "0644",
+      "path": "router_plugin_packager_setup.py",
+      "role": "layer3-entrypoint",
+      "sha256": "sha256:e2f47298ad3acc4efcca60c1ee4908429952e7c43ef31523bf80c2aae8ca2ea7",
+      "source": "marketplace_installer/router_plugin_packager_setup.py"
+    },
+    {
+      "mode": "0644",
+      "path": "plugin_runtime_lifecycle.py",
+      "role": "layer2-entrypoint",
+      "sha256": "sha256:e4228513599e1b1ff51e693f6d7d57d31233756e970049c5fe334355dd6c70b6",
+      "source": "marketplace_installer/plugin_runtime_lifecycle.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_authority.py",
+      "role": "support-module",
+      "sha256": "sha256:14d67950345c9270e36a272a8cd5ceea4aac5d00bfe33419013ee8a57a1bdc48",
+      "source": "marketplace_installer/router_plugin_packager_authority.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_branding.py",
+      "role": "support-module",
+      "sha256": "sha256:7ac1eb50aa7655edfd7bc8d5514ff75cf6e76c5f33e2bce2c81561c3bb88d0a6",
+      "source": "marketplace_installer/router_plugin_packager_branding.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_catalog.py",
+      "role": "support-module",
+      "sha256": "sha256:17575d4d61a55d6ed7b1cff558137d666937746d37f0eb49aa70d1150349bd98",
+      "source": "marketplace_installer/router_plugin_packager_catalog.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_control.py",
+      "role": "support-module",
+      "sha256": "sha256:9789b95ff407a9d5c978872aab096126337e11ef00645d3d48ded63cdc42747f",
+      "source": "marketplace_installer/router_plugin_packager_control.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_errors.py",
+      "role": "support-module",
+      "sha256": "sha256:d06d4a33d5d3c611baeece410a436debc0a733aab67b9ec38e81b6eb7237e1ac",
+      "source": "marketplace_installer/router_plugin_packager_errors.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_hashing.py",
+      "role": "support-module",
+      "sha256": "sha256:449819148371c2d2caf4674a966e1123017b15430d311794fb0bbdfb732857db",
+      "source": "marketplace_installer/router_plugin_packager_hashing.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_io.py",
+      "role": "support-module",
+      "sha256": "sha256:d896ebc92fa4fe396b14d94122a4cb41d1a32c3f29bc399891c261d7dd0ec6d7",
+      "source": "marketplace_installer/router_plugin_packager_io.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_invocation.py",
+      "role": "support-module",
+      "sha256": "sha256:dd132479034c2d7ba6ec0ba20d94cadcf247b2d0dbdabe765b5939472559b433",
+      "source": "marketplace_installer/router_plugin_packager_invocation.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_manifest.py",
+      "role": "support-module",
+      "sha256": "sha256:9b57f956039d500fbb32d8bd2c2f1f3a3f7633bcdd36535428dbc2c6ec5fadd3",
+      "source": "marketplace_installer/router_plugin_packager_manifest.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_mcp.py",
+      "role": "support-module",
+      "sha256": "sha256:6cf41ff704641b04c310828ab19ca9882b8a6999f0d179a63de094b0f341d9c5",
+      "source": "marketplace_installer/router_plugin_packager_mcp.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_mcp_normalization.py",
+      "role": "support-module",
+      "sha256": "sha256:1222816e71f05290242e3b02bfa0a258f8bb36ffa13236e3f733e852279479c5",
+      "source": "marketplace_installer/router_plugin_packager_mcp_normalization.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_metadata.py",
+      "role": "support-module",
+      "sha256": "sha256:a9b256d5d9eac12a7bca0b0801633fc8c37dd418fa89debf5142eebd74df8afe",
+      "source": "marketplace_installer/router_plugin_packager_metadata.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_normalization.py",
+      "role": "support-module",
+      "sha256": "sha256:317da7f0c2a65ef1a01789a9a9d7e39b3d012bb45ddb4caf4425e392ad14dde8",
+      "source": "marketplace_installer/router_plugin_packager_normalization.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_native.py",
+      "role": "support-module",
+      "sha256": "sha256:b9fd5ce007f08acb4ca5194d6bc2dc6f3ef37b9b00f2d64e9cfb31c53d758f2e",
+      "source": "marketplace_installer/router_plugin_packager_native.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_outputs.py",
+      "role": "support-module",
+      "sha256": "sha256:ef275d5caf5f740793e9aee5aa28e0c055533c5c90ea5ccaf5dad145027f5062",
+      "source": "marketplace_installer/router_plugin_packager_outputs.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_parsing.py",
+      "role": "support-module",
+      "sha256": "sha256:5bbc0f7ec1182f4a405021c41f7aac2ae67e017ec30f68c4f0db46a77829a5f0",
+      "source": "marketplace_installer/router_plugin_packager_parsing.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_payloads.py",
+      "role": "support-module",
+      "sha256": "sha256:98535bffc545c7511dd6480e75d4e89f3f2ce4ba9b5df32ed5443a0e3bd8d44e",
+      "source": "marketplace_installer/router_plugin_packager_payloads.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_receipts.py",
+      "role": "support-module",
+      "sha256": "sha256:cec72beb096747fd10cf144889a6540c3e8bf9997a840259f858695640b569a3",
+      "source": "marketplace_installer/router_plugin_packager_receipts.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_release.py",
+      "role": "support-module",
+      "sha256": "sha256:3e06720918fb1d7254c81cb6b40302a07a9c5e13ccc1957ce60e1d0ba7ff6493",
+      "source": "marketplace_installer/router_plugin_packager_release.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_runtime.py",
+      "role": "support-module",
+      "sha256": "sha256:8256335edb0cba5b65f971f74e3d739535027d4c8b087bde115ec5fe244b5e5c",
+      "source": "marketplace_installer/router_plugin_packager_runtime.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_source.py",
+      "role": "support-module",
+      "sha256": "sha256:530aad8e8b8b73fb39fe416a185a2340d100b7bf063278e46c001a942784571d",
+      "source": "marketplace_installer/router_plugin_packager_source.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_staging.py",
+      "role": "support-module",
+      "sha256": "sha256:2d56e2617bb13508c89760c45fb446c0cdc75ed4bb3322366b75b88044e5306c",
+      "source": "marketplace_installer/router_plugin_packager_staging.py"
+    },
+    {
+      "mode": "0644",
+      "path": "router_plugin_packager_text.py",
+      "role": "support-module",
+      "sha256": "sha256:09aad874926b86939cbeb577bb42c9d9321045b9a4170fb937f1bf1432061759",
+      "source": "marketplace_installer/router_plugin_packager_text.py"
+    }
+  ],
+  "format_version": 1,
+  "invocation_schema_version": "2",
+  "layer1_protocol_version": "1.0.0",
+  "python_requires": ">=3.12",
+  "supported_skill_versions": ">=0.1.0,<1.0.0"
+}
