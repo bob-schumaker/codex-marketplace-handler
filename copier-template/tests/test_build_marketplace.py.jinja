@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+import importlib.util
+import os
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+
+def load_build_script(repository: Path):
+    script = repository / "scripts" / "build_marketplace.py"
+    specification = importlib.util.spec_from_file_location("build_marketplace", script)
+    assert specification is not None
+    assert specification.loader is not None
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
+def test_build_script_uses_explicit_repository_inputs_from_foreign_cwd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    publisher = Path(__file__).parents[1]
+    source = tmp_path / "source"
+    source.mkdir()
+    invocation = source / "router-plugin-config.json"
+    invocation.write_text("{}\n", encoding="utf-8")
+    generated = source / "generated" / "example-plugin"
+    generated.mkdir(parents=True)
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    script = load_build_script(publisher)
+    received: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        script,
+        "parse_invocation",
+        lambda path, root: SimpleNamespace(repository_root=root, output_root=generated),
+    )
+    monkeypatch.setattr(
+        script,
+        "run",
+        lambda command, path, root: {"output_root": str(generated)},
+    )
+
+    def assemble(*, plugin_root: Path, assembly_root: Path, marketplace_name: str):
+        received.update(
+            {
+                "plugin_root": plugin_root,
+                "assembly_root": assembly_root,
+                "marketplace_name": marketplace_name,
+            }
+        )
+        assembly_root.mkdir(parents=True)
+        return {"assembly_root": str(assembly_root)}
+
+    monkeypatch.setattr(script, "assemble_generated_plugin", assemble)
+    monkeypatch.setattr(
+        script,
+        "stage_marketplace_payload",
+        lambda canonical, resources: received.update(
+            {"canonical": canonical, "resources": resources}
+        )
+        or {"destination_resources": str(resources)},
+    )
+    monkeypatch.chdir(foreign)
+
+    exit_code = script.main(
+        [
+            "--repository-root",
+            os.path.relpath(source, foreign),
+            "--invocation",
+            os.path.relpath(invocation, foreign),
+            "--marketplace-name",
+            "example-marketplace",
+        ]
+    )
+
+    assert exit_code == 0
+    assert received["plugin_root"] == generated
+    assert received["marketplace_name"] == "example-marketplace"
+    assert received["resources"] == publisher / "src" / "{{ package_name }}" / "resources"
+    assert not (publisher / ".build" / "marketplace-assembly").exists()
+
+
+def test_build_script_rejects_an_invocation_outside_its_repository(
+    tmp_path: Path,
+) -> None:
+    script = load_build_script(Path(__file__).parents[1])
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    invocation = tmp_path / "outside.json"
+    invocation.write_text("{}\n", encoding="utf-8")
+
+    assert (
+        script.main(
+            [
+                "--repository-root",
+                str(repository),
+                "--invocation",
+                str(invocation),
+                "--marketplace-name",
+                "example-marketplace",
+            ]
+        )
+        == 1
+    )

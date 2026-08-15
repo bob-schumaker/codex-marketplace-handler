@@ -23,7 +23,7 @@ Copier prompts for:
 
 For example, a slug of `team-tools-publisher` produces the command
 `team-tools-publisher` and the package name `team_tools_publisher`.
-The generated product depends on `marketplace-installer >=0.1.0,<0.2.0` from
+The generated product depends on `marketplace-installer >=0.1.1,<0.2.0` from
 PyPI; publishing the library is separate release work.
 
 ## Add the marketplace payload

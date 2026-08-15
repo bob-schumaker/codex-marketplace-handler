@@ -1,0 +1,81 @@
+"""Build this publisher's embedded marketplace from one source repository."""
+
+from __future__ import annotations
+
+import argparse
+import shutil
+import sys
+from pathlib import Path
+
+from marketplace_installer.marketplace_publish import (
+    MarketplacePublishError,
+    assemble_generated_plugin,
+    stage_marketplace_payload,
+)
+from marketplace_installer.router_plugin_packager import PackagerError, parse_invocation, run
+
+
+def _resolve_repository_input(value: str) -> Path:
+    path = Path(value).resolve()
+    if path.is_symlink() or not path.is_dir():
+        raise MarketplacePublishError(f"repository root is invalid: {path}")
+    return path
+
+
+def _resolve_invocation(value: str, repository_root: Path) -> Path:
+    path = Path(value).resolve()
+    if path.is_symlink() or not path.is_file() or repository_root not in path.parents:
+        raise MarketplacePublishError(f"invocation is not a regular file in repository: {path}")
+    return path
+
+
+def build_marketplace(
+    *, repository_root: Path, invocation_path: Path, marketplace_name: str
+) -> dict[str, object]:
+    """Generate, assemble, and stage one marketplace payload."""
+    publisher_root = Path(__file__).resolve().parents[1]
+    assembly_root = publisher_root / ".build" / "marketplace-assembly"
+    resources = publisher_root / "src" / "{{ package_name }}" / "resources"
+    if assembly_root.exists():
+        raise MarketplacePublishError(
+            f"assembly root remains from a failed build: {assembly_root}; inspect and remove it"
+        )
+    invocation = parse_invocation(invocation_path, repository_root)
+    if invocation.repository_root != repository_root:
+        raise MarketplacePublishError("invocation repository root does not match --repository-root")
+    if repository_root not in invocation.output_root.parents:
+        raise MarketplacePublishError("invocation output root is outside --repository-root")
+    applied = run("apply", invocation_path, repository_root)
+    plugin_root = Path(applied["output_root"])
+    assembled = assemble_generated_plugin(
+        plugin_root=plugin_root,
+        assembly_root=assembly_root,
+        marketplace_name=marketplace_name,
+    )
+    staged = stage_marketplace_payload(assembly_root, resources)
+    shutil.rmtree(assembly_root)
+    return {"applied": applied, "assembled": assembled, "staged": staged}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="build_marketplace.py")
+    parser.add_argument("--repository-root", required=True)
+    parser.add_argument("--invocation", required=True)
+    parser.add_argument("--marketplace-name", required=True)
+    args = parser.parse_args(argv)
+    try:
+        repository_root = _resolve_repository_input(args.repository_root)
+        invocation_path = _resolve_invocation(args.invocation, repository_root)
+        build_marketplace(
+            repository_root=repository_root,
+            invocation_path=invocation_path,
+            marketplace_name=args.marketplace_name,
+        )
+    except (MarketplacePublishError, PackagerError, OSError, KeyError) as error:
+        print(f"build_marketplace.py: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

@@ -46,16 +46,23 @@
     "tests/test_validation.py": "d323bf5f3cc026e5ea08228408c9c6a8466f8baccd8a478e1ed8561cc64367d9"
   },
   "allowed_changes": {
+    ".gitignore": "product ignores repository-only assembly output",
     "AGENTS.md": "product now delegates generic installation to marketplace-installer",
     "README.md": "product documents its library dependency",
     "poetry.lock": "rendered products do not carry a lockfile",
     "pyproject.toml": "product declares the bounded library dependency",
     "src/marketplace_publisher/importer.py": "thin public importer adapter replaces copied generic importer",
+    "scripts/build_marketplace.py": "repository-only generated-payload build script replaces marketplace import",
+    "scripts/import_marketplace.py": "legacy local-marketplace import script is removed",
+    "src/marketplace_publisher/cli.py": "CLI converts the v3 library mapping into the stable JSON envelope",
     "src/marketplace_publisher/models.py": "generic model module moved to the library",
     "src/marketplace_publisher/paths.py": "generic path module moved to the library",
     "src/marketplace_publisher/publisher.py": "thin embedded-resource adapter replaces copied generic publisher",
     "src/marketplace_publisher/validation.py": "generic validation module moved to the library",
     "tests/test_packaging.py": "product wheel test resolves its declared library dependency",
+    "tests/test_build_marketplace.py": "product verifies its explicit repository build script",
+    "tests/test_cli.py": "product CLI tests use the v3 library mapping",
+    "tests/test_importer.py": "legacy rendered local-marketplace importer tests are removed",
     "tests/test_publisher.py": "generic publisher tests moved to the library test suite",
     "tests/test_validation.py": "generic validation tests moved to the library test suite"
   }

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from .publisher import PublisherError, publish_embedded_marketplace
+from .publisher import MarketplacePublishError, publish_embedded_marketplace
 
 
 def main(argv: Sequence[str] | None = None, *, home: Path | None = None) -> int:
@@ -26,16 +26,31 @@ def main(argv: Sequence[str] | None = None, *, home: Path | None = None) -> int:
         result = publish_embedded_marketplace(
             home or Path.home(), dry_run=args.dry_run, force=args.force
         )
-    except PublisherError as error:
+    except MarketplacePublishError as error:
         return _report_error(str(error), json_output=args.json_output)
 
     if args.json_output:
-        print(json.dumps(result.as_dict()))
+        print(
+            json.dumps(
+                {
+                    "status": result["status"],
+                    "marketplace": result["marketplace"],
+                    "dry_run": result["dry_run"],
+                    "plugins": {
+                        "added": result["added"],
+                        "updated": result["updated"],
+                        "unchanged": result["unchanged"],
+                        "conflicts": result["conflicts"],
+                    },
+                    "errors": [],
+                }
+            )
+        )
     else:
         print(
-            f"{result.status} marketplace {result.marketplace}: "
-            f"{len(result.added)} added, {len(result.updated)} updated, "
-            f"{len(result.unchanged)} unchanged"
+            f"{result['status']} marketplace {result['marketplace']}: "
+            f"{len(result['added'])} added, {len(result['updated'])} updated, "
+            f"{len(result['unchanged'])} unchanged"
         )
     return 0
 

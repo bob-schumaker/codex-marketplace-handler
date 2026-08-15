@@ -7,6 +7,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+from test_router_plugin_packager_layer3 import _mcp_fixture_repo
 
 
 def copy_template(
@@ -28,11 +29,12 @@ def test_root_copier_template_renders_the_default_publisher(tmp_path: Path) -> N
     assert completed.returncode == 0, completed.stderr
     project = tomllib.loads((destination / "pyproject.toml").read_text())
     assert project["project"]["name"] == "marketplace-publisher"
-    assert project["project"]["dependencies"] == ["marketplace-installer>=0.1.0,<0.2.0"]
+    assert project["project"]["dependencies"] == ["marketplace-installer>=0.1.1,<0.2.0"]
     assert project["project"]["scripts"] == {
         "marketplace-publisher": "marketplace_publisher.__main__:main"
     }
-    assert (destination / "scripts" / "import_marketplace.py").is_file()
+    assert (destination / "scripts" / "build_marketplace.py").is_file()
+    assert not (destination / "scripts" / "import_marketplace.py").exists()
     package = destination / "src" / "marketplace_publisher"
     assert package.is_dir()
     assert not (destination / "memory-bank").exists()
@@ -42,11 +44,9 @@ def test_root_copier_template_renders_the_default_publisher(tmp_path: Path) -> N
     assert not list(package.glob("paths.py"))
     assert not list(package.glob("validation.py"))
     assert "marketplace_installer" in (package / "publisher.py").read_text()
-    adapter_sources = "\n".join(
-        (package / name).read_text() for name in ("publisher.py", "importer.py")
-    )
-    assert "from marketplace_installer import" in adapter_sources
-    assert "marketplace_installer." not in adapter_sources
+    publisher = (package / "publisher.py").read_text()
+    assert "marketplace_installer.marketplace_publish" in publisher
+    assert not (package / "importer.py").exists()
 
 
 def test_root_copier_template_renders_a_custom_publisher(tmp_path: Path) -> None:
@@ -69,6 +69,83 @@ def test_root_copier_template_renders_a_custom_publisher(tmp_path: Path) -> None
     ).read_text()
     assert 'f"{__package__}.resources"' in publisher
     assert "marketplace_publisher.resources" not in publisher
+
+
+def test_rendered_product_unit_tests_use_the_v3_adapter(tmp_path: Path) -> None:
+    repository = Path(__file__).parents[1]
+    destination = tmp_path / "publisher"
+    completed = copy_template(repository, destination)
+
+    assert completed.returncode == 0, completed.stderr
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_cli.py",
+            "tests/test_build_marketplace.py",
+            "tests/test_packaging.py",
+        ],
+        cwd=destination,
+        text=True,
+        capture_output=True,
+        env={
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(
+                [str(destination / "src"), str(repository / "src")]
+            ),
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_rendered_build_script_generates_and_stages_a_v3_payload(
+    tmp_path: Path,
+) -> None:
+    repository = Path(__file__).parents[1]
+    destination = tmp_path / "publisher"
+    source_repository = _mcp_fixture_repo(tmp_path)
+    foreign_directory = tmp_path / "foreign"
+    foreign_directory.mkdir()
+    completed = copy_template(repository, destination)
+
+    assert completed.returncode == 0, completed.stderr
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(destination / "scripts" / "build_marketplace.py"),
+            "--repository-root",
+            os.path.relpath(source_repository, foreign_directory),
+            "--invocation",
+            os.path.relpath(source_repository / "mcp.json", foreign_directory),
+            "--marketplace-name",
+            "fixture-marketplace",
+        ],
+        cwd=foreign_directory,
+        text=True,
+        capture_output=True,
+        env={
+            **os.environ,
+            "HOME": str(tmp_path / "empty-home"),
+            "PYTHONPATH": os.pathsep.join(
+                [str(destination / "src"), str(repository / "src")]
+            ),
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    resources = destination / "src" / "marketplace_publisher" / "resources"
+    assert (resources / ".agents" / "plugins" / "marketplace.json").is_file()
+    assert (resources / ".marketplace-assembly-receipt.json").is_file()
+    assert (
+        resources
+        / "plugins"
+        / "sample-mcp-surface"
+        / ".router-plugin-packager-source-map.json"
+    ).is_file()
+    assert not (destination / ".build" / "marketplace-assembly").exists()
+    assert not (tmp_path / "empty-home" / ".codex").exists()
 
 
 @pytest.mark.parametrize(

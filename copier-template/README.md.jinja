@@ -3,28 +3,25 @@
 This repository packages one Codex personal local marketplace into a Python
 distribution. It starts without marketplace payload data.
 
-## Add a marketplace payload
+## Build a marketplace payload
 
-Import all plugins from a local marketplace:
-
-```sh
-poetry run python scripts/import_marketplace.py MARKETPLACE_NAME
-```
-
-Or import selected plugins:
+Build one router plugin from a source repository and embed its assembled
+marketplace payload:
 
 ```sh
-poetry run python scripts/import_marketplace.py MARKETPLACE_NAME PLUGIN_NAME [...]
+poetry run python scripts/build_marketplace.py \
+  --repository-root ../werner-mcp-tools \
+  --invocation ../werner-mcp-tools/router-plugin-config.json \
+  --marketplace-name werner-mcp-tools
 ```
 
-The resulting `resources/marketplace.json` and plugin directories are the
-complete release payload. Build and install the distribution, then run:
+The resulting `resources/.agents/plugins/marketplace.json`, generated plugin,
+and assembly receipt are the complete release payload. Build and install the
+distribution, then run:
 
 ```sh
 {{ project_slug }} [--dry-run] [--force] [--json] [--verbose]
 ```
 
-Use `--force` only to replace modified package-owned files or to adopt an
-existing plugin directory without a publisher-state record. The state manifest
-is shared by installers for the same marketplace, and this installer preserves
-records for plugins supplied by the others.
+Use `--force` only to replace a changed plugin with the embedded plugin. The
+build script never reads a configured marketplace or `~/.codex`.
