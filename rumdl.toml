@@ -1,2 +1,2 @@
 [global]
-exclude = ["src/marketplace_publisher/resources/**"]
+exclude = ["baseline/src/{{ package_name }}/resources/**"]

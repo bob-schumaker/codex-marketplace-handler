@@ -6,7 +6,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from marketplace_publisher.importer import import_marketplace
+from {{ package_name }}.importer import import_marketplace
 
 
 def write_marketplace(root: Path) -> None:
@@ -47,7 +47,7 @@ def run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> 
 
 def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) -> None:
     repository = Path(__file__).parents[1]
-    resources = repository / "src" / "marketplace_publisher" / "resources"
+    resources = repository / "src" / "{{ package_name }}" / "resources"
     source_marketplace = tmp_path / "source-marketplace"
     backup = tmp_path / "resources-backup"
     dist = tmp_path / "dist"
@@ -70,24 +70,23 @@ def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) ->
             assert (
                 archive.read(entry_points).decode().strip()
                 == (
-                    "[console_scripts]\n"
-                    "marketplace-publisher=marketplace_publisher.__main__:main\n"
+                    "[console_scripts]\n{{ project_slug }}={{ package_name }}.__main__:main\n"
                 ).strip()
             )
         run([sys.executable, "-m", "venv", str(environment)], cwd=repository)
         binary_directory = environment / ("Scripts" if os.name == "nt" else "bin")
         run(
-            [str(binary_directory / "pip"), "install", "--no-deps", str(wheel)],
+            [str(binary_directory / "pip"), "install", str(wheel)],
             cwd=repository,
         )
         output = run(
-            [str(binary_directory / "marketplace-publisher"), "--json"],
+            [str(binary_directory / "{{ project_slug }}"), "--json"],
             cwd=tmp_path,
             env={**os.environ, "HOME": str(target_home), "PYTHONPATH": ""},
         )
         module_home = tmp_path / "module-home"
         module_output = run(
-            [str(binary_directory / "python"), "-m", "marketplace_publisher", "--json"],
+            [str(binary_directory / "python"), "-m", "{{ package_name }}", "--json"],
             cwd=tmp_path,
             env={**os.environ, "HOME": str(module_home), "PYTHONPATH": ""},
         )
@@ -95,7 +94,7 @@ def test_built_wheel_publishes_without_original_import_source(tmp_path: Path) ->
             [
                 str(binary_directory / "python"),
                 "-m",
-                "marketplace_publisher",
+                "{{ package_name }}",
                 "--unknown",
             ],
             cwd=tmp_path,

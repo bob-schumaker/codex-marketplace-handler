@@ -66,10 +66,14 @@ class PublishResult:
 
 
 def publish_embedded_marketplace(
-    home: Path | None = None, *, dry_run: bool = False, force: bool = False
+    resource_package: str,
+    *,
+    home: Path | None = None,
+    dry_run: bool = False,
+    force: bool = False,
 ) -> PublishResult:
     """Publish marketplace data bundled in the installed distribution."""
-    resource_files = resources.files("marketplace_publisher.resources")
+    resource_files = resources.files(resource_package)
     with resources.as_file(resource_files) as resource_root:
         return publish_marketplace(
             Path(resource_root), home or Path.home(), dry_run=dry_run, force=force

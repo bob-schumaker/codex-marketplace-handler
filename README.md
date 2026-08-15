@@ -1,9 +1,9 @@
 # Marketplace Publisher
 
-`marketplace-publisher` is a source repository for generating a custom Codex
-local-marketplace installer. It intentionally contains no marketplace catalog
-or plugin payload. Use the Copier template to create a product repository,
-then add the marketplace that product will publish.
+`marketplace-publisher` contains two related artifacts: the reusable
+`marketplace-installer` library and a Copier baseline for payload-bearing
+`marketplace-publisher` product repositories. The library deliberately
+contains no marketplace catalog or plugin payload.
 
 ## Create an installer repository
 
@@ -11,18 +11,20 @@ From this repository, run:
 
 ```sh
 poetry install
-poetry run copier copy copier-template /path/to/my-marketplace-installer
+poetry run copier copy . /path/to/my-marketplace-publisher
 ```
 
 Copier prompts for:
 
-- `project_name`: the human-readable project name.
-- `project_slug`: the lowercase package distribution and installed command
+- `project_name`: the human-readable product name.
+- `project_slug`: the lowercase product distribution and installed command
   name; use letters, digits, and hyphens.
 - `package_name`: the Python import name, derived from the slug by default.
 
-For example, a slug of `team-tools-installer` produces the command
-`team-tools-installer` and the package name `team_tools_installer`.
+For example, a slug of `team-tools-publisher` produces the command
+`team-tools-publisher` and the package name `team_tools_publisher`.
+The generated product depends on `marketplace-installer >=0.1.0,<0.2.0` from
+PyPI; publishing the library is separate release work.
 
 ## Add the marketplace payload
 

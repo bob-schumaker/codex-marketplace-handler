@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Install a packaged Codex personal local marketplace."
 authors = [{ name = "Anonymous" }]
 requires-python = ">=3.11,<4.0"
+dependencies = ["marketplace-installer>=0.1.0,<0.2.0"]
 
 [project.scripts]
 {{ project_slug }} = "{{ package_name }}.__main__:main"

@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: snok/install-poetry@v1
+      - run: poetry install
+      - run: poetry run ruff format --check .
+      - run: poetry run ruff check .
+      - run: poetry run rumdl fmt --check .
+      - run: poetry run rumdl check .
+      - run: poetry run pytest
+      - run: poetry build

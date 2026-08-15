@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import copy
-import argparse
 import json
 import shutil
-import sys
 import tempfile
 from pathlib import Path
 from typing import Sequence
@@ -23,41 +21,10 @@ class ImportError(RuntimeError):
     """Raised when a marketplace cannot be safely embedded as package data."""
 
 
-def main(
-    argv: Sequence[str] | None = None,
-    *,
-    home: Path | None = None,
-    package_resources: Path | None = None,
-) -> int:
-    """Run the repository-only marketplace import command."""
-    parser = argparse.ArgumentParser(prog="import_marketplace.py")
-    parser.add_argument("marketplace_name")
-    parser.add_argument("plugins", nargs="*")
-    args = parser.parse_args(argv)
-
-    effective_home = home or Path.home()
-    source_root = (
-        effective_home / ".codex" / "local-marketplaces" / args.marketplace_name
-    )
-    destination = package_resources or _repository_package_resources()
-    try:
-        marketplace = import_marketplace(
-            source_root,
-            destination,
-            selected_plugins=args.plugins,
-            expected_name=args.marketplace_name,
-        )
-    except ImportError as error:
-        print(f"import_marketplace.py: {error}", file=sys.stderr)
-        return 1
-
-    print(f"Imported marketplace {marketplace.name} into {destination}")
-    return 0
-
-
 def import_marketplace(
     marketplace_root: Path,
-    package_resources: Path,
+    destination_resources: Path,
+    *,
     selected_plugins: Sequence[str] | None = None,
     expected_name: str | None = None,
 ) -> Marketplace:
@@ -83,7 +50,7 @@ def import_marketplace(
     selected_entries = _select_entries(marketplace, selected_plugins)
     _validate_source_trees(marketplace_root, selected_entries)
     _replace_package_resources(
-        package_resources,
+        destination_resources,
         _filtered_catalog(marketplace, selected_entries),
         selected_entries,
         marketplace_root,
@@ -207,7 +174,3 @@ def _copy_regular_tree(source: Path, destination: Path) -> None:
             target.mkdir()
         else:
             shutil.copy2(path, target)
-
-
-def _repository_package_resources() -> Path:
-    return Path(__file__).parents[2] / "src" / "marketplace_publisher" / "resources"

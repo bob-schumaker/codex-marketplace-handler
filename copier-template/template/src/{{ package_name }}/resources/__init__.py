@@ -1,1 +1,0 @@
-"""Embedded marketplace package data."""
