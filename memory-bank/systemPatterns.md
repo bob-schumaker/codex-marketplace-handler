@@ -23,24 +23,28 @@ regular file trees before mutation; reject symlinks and avoid executing plugin
 code. Existing merge publication preserves unrelated content and protects
 modified package-owned files unless forced.
 
-## Canonical generated payload (planned)
+## Canonical generated payload
 
 Spec 003 defines a single-plugin canonical assembly root with `.agents/`,
-`plugins/`, and a portable fixed assembly receipt. Canonical assembly is a
-Copier-build artifact; the direct workflow continues to publish a generated
-plugin with `publish_generated_plugin`. The Copier workflow stages the same
-regular files into resources, adding only `resources/__init__.py`. Receipt
-portability and byte-for-byte path/digest parity are library responsibilities,
-not template rewrites.
+`plugins/`, and a portable fixed assembly receipt. `assemble_generated_plugin`
+creates that artifact after strict source-aware v3 validation; the direct
+workflow continues to publish a generated plugin with
+`publish_generated_plugin`. The Copier workflow calls
+`stage_marketplace_payload` to copy the same regular files into resources,
+adding only `resources/__init__.py`. Receipt portability and byte-for-byte
+path/digest parity are library responsibilities, not template rewrites.
 
 Portable validation of the embedded canonical root is distinct from validation
 of its mutable operational destination. The latter permits only the library's
 transaction, receipt, and lock artifacts in addition to a regular marketplace
 tree; those artifacts never become package payload or conflict state.
 
-## Template boundary
+## Template boundary and installed publication
 
-The current template still uses repository-only marketplace import and the
-legacy root-level `resources/marketplace.json` payload. Spec 003 replaces that
-with a repository-only generated-payload build script. Until then, preserve the
-current template contract and its frozen migration fixtures.
+The template's repository-only `scripts/build_marketplace.py` resolves explicit
+consumer-repository and invocation paths, runs the public packager, assembles a
+canonical payload under its ignored `.build/` directory, and stages it into
+resources. The installed CLI calls
+`publish_embedded_generated_marketplace`; it never regenerates the plugin or
+reads a configured marketplace. The product adapter may use only public
+library APIs and maps the library result to the stable CLI JSON envelope.
