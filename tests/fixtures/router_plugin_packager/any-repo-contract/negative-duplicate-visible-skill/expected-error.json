@@ -1,0 +1,11 @@
+{
+  "error_code": "duplicate_visible_skill",
+  "message": "normalized visible skill list contains a duplicate entry",
+  "details": {
+    "skill_id": "ponytail",
+    "skill_paths": [
+      "skills/ponytail",
+      "skills/ponytail"
+    ]
+  }
+}

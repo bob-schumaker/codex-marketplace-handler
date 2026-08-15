@@ -1,0 +1,13 @@
+{
+  "artifact_path": "generated/registry.json",
+  "compatibility": {
+    "source_root": "skills"
+  },
+  "freshness_basis": "content-hash",
+  "generator_identity": "fixture-generator",
+  "generator_parameters": {
+    "mode": "fixture"
+  },
+  "generator_version": "1.0",
+  "source_digest": "55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3"
+}
