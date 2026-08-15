@@ -2,34 +2,28 @@
 
 ## Current focus
 
-The publisher implementation and Copier template are complete. The current
-specification also requires the installed package to support
-`python -m marketplace_publisher` through an exit-status-preserving
-`__main__.py`. This source repository intentionally contains no embedded
-marketplace payload.
+Prepare the Copier template to build and embed a canonical v3 generated
+marketplace payload, as specified by `specs/003-generated-plugin-copier-publisher.md`.
 
 ## Current status
 
-- Done: main specification, technical plan, and TDD task list are authored.
-- Done: Poetry developer tooling, package setup, and pre-commit hooks are
-  configured.
-- Done: repository-only importer, publisher, state checks, runtime CLI, and
-  self-contained wheel verification are implemented through TDD.
-- Done: a Copier template renders a custom-named, payload-free marketplace
-  installer without this repository's memory-bank or specification artifacts.
-- Done: an imported 15-plugin payload was verified in a built wheel and then
-  removed; source control retains only empty resource-package markers.
-- Done: local marketplace layout is confirmed under
-  `~/.codex/local-marketplaces/<marketplace-name>/`.
-- Done: package-resource exclusions keep Ruff and Rumdl from reformatting a
-  future imported plugin payload.
-- Done: the specification defines console and module CLI invocation parity,
-  including installed-wheel and non-zero failure coverage.
+- Done: `marketplace-installer` contains the v3 router-plugin packager closure,
+  generated-plugin marketplace publisher, integrity manifests, runtime
+  dependencies, console commands, and migrated regression suites.
+- Done: the root library wheel and existing Copier product wheel have isolated
+  integration coverage.
+- Done: specs 002 and 003 define library/template separation and the approved
+  canonical generated-payload direction.
+- Current template behavior remains legacy: its repository-only importer copies
+  an existing local marketplace into `resources/marketplace.json`.
 
 ## Next steps
 
-1. In a product repository, use `poetry run python scripts/import_marketplace.py
-   <marketplace-name>` to add a release payload intentionally.
-2. Build and publish the resulting payload-bearing distribution when desired.
-3. Use `poetry run copier copy copier-template <destination>` when a clean,
-   custom-named installer repository is needed.
+1. Implement the public v3 canonical-assembly, embedded-publication, staging,
+   and portable-validation seams required by spec 003; version the library and
+   record the generated-payload minimum dependency.
+2. Add library-first assembly/staging parity and failure tests.
+3. Migrate the Copier template, fixtures, rendered tests, and wheel test from
+   legacy importer payloads to generated canonical payloads.
+4. Re-run the complete suite and build/wheel isolation checks before adopting
+   the template in another project.

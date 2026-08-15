@@ -1,31 +1,29 @@
 # Technical Context
 
-## Planned stack
+## Current stack
 
-- Python project managed with Poetry.
-- Python 3.11.
-- `src/` layout with package import name `marketplace_publisher`.
-- Console command: `marketplace-publisher`, mapped to
-  `marketplace_publisher.__main__:main`.
-- Repository-only importer command:
-  `poetry run python scripts/import_marketplace.py`.
-- Standard-library resource access via `importlib.resources`.
-- Ruff formats and lints Python; Rumdl formats and lints Markdown; pytest is
-  the test runner; pre-commit runs Ruff and Rumdl hooks.
-- Copier is a development dependency. `copier-template/copier.yml` derives a
-  Python package name from a custom project slug and renders the installer.
-- `rumdl.toml` and Ruff's `extend-exclude` omit package resources from project
-  formatting checks so a product's imported third-party plugin trees remain
-  byte-preserved.
+- Poetry package: `marketplace-installer` version `0.1.0`.
+- Python `>=3.12,<4.0`; runtime dependencies `packaging==26.3` and
+  `PyYAML==6.0.3`.
+- Source package: `src/marketplace_installer/`.
+- Console commands include `marketplace-installer`, `router-plugin-packager`,
+  first-user, MCP customer/setup, runtime-lifecycle, and toolchain launcher
+  flows.
+- Copier source is rooted by `copier.yml` with `_subdirectory:
+  copier-template`; rendered products currently declare a normal PyPI
+  `marketplace-installer` dependency.
+- Pytest, Ruff, Rumdl, pre-commit, Copier, and `packaging` are development
+  tooling.
 
 ## Verification expectations
 
-Use temporary home directories for publishing tests. Cover fresh install,
-same-name merge, idempotency, validation failures, safe failure behavior, and
-wheel-installed resource access without the original imported marketplace.
-Use RED, GREEN, and REFACTOR for every behavior-changing implementation task,
-with documented exceptions only when no repeatable automated check is feasible.
-
-For a release, build the payload-bearing wheel after importing its selected
-marketplace, install it with `pip --no-deps` into a temporary virtual
-environment, and run `marketplace-publisher --json` with an isolated `HOME`.
+- Run targeted tests first, then `poetry run pytest`; the current suite covers
+  library APIs, v3 packager flows, Copier rendering, and wheel isolation.
+- Build wheels with Poetry and verify isolated installations with a temporary
+  virtual environment, scrubbed `PYTHONPATH`, and `pip check`.
+- V3 manifests and package data must be present in the built wheel and validate
+  from the installed package.
+- The root package already requires Python 3.12, but its current Ruff target is
+  `py311`. Spec 003 raises both root and rendered Ruff targets to `py312`, uses
+  an exact future library lower bound, and keeps path/editable dependencies out
+  of rendered metadata.
