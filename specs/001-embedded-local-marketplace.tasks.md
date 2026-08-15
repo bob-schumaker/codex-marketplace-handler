@@ -1,8 +1,15 @@
 # TDD Tasks: Embedded Local Marketplace Publisher
 
-This task list implements
+> **Status: archived.** This task list belongs to the superseded v1 product
+> design in [001](001-embedded-local-marketplace.md). Do not resume unchecked
+> tasks from it; use [002](002-marketplace-installer-library-and-baseline.md)
+> for the two-artifact baseline and
+> [003](003-generated-plugin-copier-publisher.md) for the current
+> generated-payload workflow.
+
+This historic task list originally implemented
 `001-embedded-local-marketplace.md` according to its companion technical plan.
-Complete each behavior task with a documented RED, GREEN, and REFACTOR cycle.
+It is not an active implementation checklist.
 
 ## 1. Package bootstrap
 

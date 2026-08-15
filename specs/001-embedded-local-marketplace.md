@@ -1,5 +1,13 @@
 # Embedded Local Marketplace Publisher
 
+> **Status: superseded.** This is the historical v1 product specification.
+> [002](002-marketplace-installer-library-and-baseline.md) supersedes its
+> library and Copier-template structure, and
+> [003](003-generated-plugin-copier-publisher.md) supersedes its rendered
+> product payload, build, and installed-publication contract. The legacy
+> importer/state behavior remains relevant only to the retained direct library
+> compatibility APIs described by 002.
+
 ## Goal
 
 Build a Poetry-managed Python project that packages an imported Codex personal
