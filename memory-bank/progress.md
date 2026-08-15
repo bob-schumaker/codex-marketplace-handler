@@ -7,7 +7,7 @@
   embedded generated-marketplace publication.
 - The complete v3 regression suite is maintained in this repository: core
   packager, layer-3 marketplace publication, MCP customer flow, setup, runtime
-  lifecycle, closure, Copier, and wheel tests.
+  lifecycle, first-user flow, closure, Copier, and wheel tests.
 - `copier-template/` renders a payload-bearing publisher that builds a v3
   payload through `scripts/build_marketplace.py` and consumes the library as a
   normal bounded dependency.
@@ -35,3 +35,6 @@
   do not introduce a template-specific marketplace representation.
 - Preserve isolated-wheel tests and avoid path/editable dependencies in
   rendered product metadata.
+- Keep first-user-flow tests importing `marketplace_installer` directly so
+  the packaged library, rather than a source-script loader, remains the test
+  authority.

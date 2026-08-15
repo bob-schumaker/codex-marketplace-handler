@@ -14,7 +14,8 @@ Maintain the implemented `marketplace-installer` library and its
   `scripts/build_marketplace.py`; it builds a generated plugin from explicit
   repository inputs and stages the canonical payload in package resources.
 - Done: rendered CLI, Copier migration, and offline two-wheel tests cover the
-  v3 payload contract; the full pytest suite passed after implementation.
+  v3 payload contract. The dedicated first-user-flow regression suite imports
+  the library directly, so the library now owns that behavioral coverage.
 - Done: specs 001–003 now state their historical/current authority boundaries.
 
 ## Next steps
