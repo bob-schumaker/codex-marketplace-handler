@@ -119,7 +119,11 @@ def test_library_and_rendered_product_wheels_are_isolated(tmp_path: Path) -> Non
         assert any(name.startswith("marketplace_installer/") for name in names)
         assert not any(name.startswith("marketplace_publisher/") for name in names)
         assert not any("resources/" in name for name in names)
-        assert not any(name.endswith("entry_points.txt") for name in names)
+        entry_points = next(name for name in names if name.endswith("entry_points.txt"))
+        commands = archive.read(entry_points).decode("utf-8")
+        assert "marketplace-installer=" in commands
+        assert "router-plugin-packager=" in commands
+        assert "mcp-plugin-packaging-customer-flow=" in commands
     with tarfile.open(library_sdist) as archive:
         names = archive.getnames()
         assert any("/src/marketplace_installer/" in name for name in names)
@@ -130,7 +134,7 @@ def test_library_and_rendered_product_wheels_are_isolated(tmp_path: Path) -> Non
     binaries = environment / ("Scripts" if os.name == "nt" else "bin")
     pip = binaries / "pip"
     python = binaries / "python"
-    run([str(pip), "install", "--no-deps", str(library_wheel)], cwd=work_directory)
+    run([str(pip), "install", str(library_wheel)], cwd=work_directory)
     run([str(pip), "install", "--no-deps", str(product_wheel)], cwd=work_directory)
     run([str(pip), "check"], cwd=work_directory)
 
