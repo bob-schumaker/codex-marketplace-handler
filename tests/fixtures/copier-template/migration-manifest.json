@@ -1,22 +1,22 @@
 {
   "moves": [
     {"source": "copier-template/copier.yml", "target": "copier.yml", "reason": "root Copier source"},
-    {"source": "copier-template/template", "target": "baseline", "reason": "sole rendered product tree"},
+    {"source": "copier-template/template", "target": "copier-template", "reason": "sole rendered product tree"},
     {"source": "src/marketplace_publisher/importer.py", "target": "src/marketplace_installer/importer.py", "reason": "generic importer"},
     {"source": "src/marketplace_publisher/models.py", "target": "src/marketplace_installer/models.py", "reason": "generic models"},
     {"source": "src/marketplace_publisher/paths.py", "target": "src/marketplace_installer/paths.py", "reason": "generic paths"},
     {"source": "src/marketplace_publisher/publisher.py", "target": "src/marketplace_installer/publisher.py", "reason": "generic publisher"},
     {"source": "src/marketplace_publisher/validation.py", "target": "src/marketplace_installer/validation.py", "reason": "generic validation"},
-    {"source": "src/marketplace_publisher/resources/__init__.py", "target": "baseline/src/{{ package_name }}/resources/__init__.py", "reason": "product resource marker"},
-    {"source": "scripts/import_marketplace.py", "target": "baseline/scripts/import_marketplace.py.jinja", "reason": "product-only importer wrapper"},
+    {"source": "src/marketplace_publisher/resources/__init__.py", "target": "copier-template/src/{{ package_name }}/resources/__init__.py", "reason": "product resource marker"},
+    {"source": "scripts/import_marketplace.py", "target": "copier-template/scripts/import_marketplace.py.jinja", "reason": "product-only importer wrapper"},
     {"source": "tests/test_importer.py", "target": "tests/test_importer.py", "reason": "library importer tests"},
     {"source": "tests/test_publisher.py", "target": "tests/test_publisher.py", "reason": "library publisher tests"},
     {"source": "tests/test_validation.py", "target": "tests/test_validation.py", "reason": "library validation tests"},
-    {"source": "copier-template/template/tests/test_cli.py.jinja", "target": "baseline/tests/test_cli.py.jinja", "reason": "product CLI test"},
-    {"source": "copier-template/template/tests/test_importer.py.jinja", "target": "baseline/tests/test_importer.py.jinja", "reason": "product importer adapter test"},
-    {"source": "copier-template/template/tests/test_package.py.jinja", "target": "baseline/tests/test_package.py.jinja", "reason": "product package test"},
-    {"source": "copier-template/template/tests/test_packaging.py.jinja", "target": "baseline/tests/test_packaging.py.jinja", "reason": "product wheel test"},
-    {"source": "copier-template/template/pyproject.toml.jinja", "target": "baseline/pyproject.toml.jinja", "reason": "product Poetry metadata"}
+    {"source": "copier-template/template/tests/test_cli.py.jinja", "target": "copier-template/tests/test_cli.py.jinja", "reason": "product CLI test"},
+    {"source": "copier-template/template/tests/test_importer.py.jinja", "target": "copier-template/tests/test_importer.py.jinja", "reason": "product importer adapter test"},
+    {"source": "copier-template/template/tests/test_package.py.jinja", "target": "copier-template/tests/test_package.py.jinja", "reason": "product package test"},
+    {"source": "copier-template/template/tests/test_packaging.py.jinja", "target": "copier-template/tests/test_packaging.py.jinja", "reason": "product wheel test"},
+    {"source": "copier-template/template/pyproject.toml.jinja", "target": "copier-template/pyproject.toml.jinja", "reason": "product Poetry metadata"}
   ],
   "files": {
     ".gitignore": "4562f67ecba68e4ebdade295069f6f3c0d1339ff2cc4f192727ae102b91a549a",

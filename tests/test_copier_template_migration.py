@@ -13,7 +13,7 @@ def file_digests(root: Path) -> dict[str, str]:
     }
 
 
-def test_baseline_render_matches_frozen_manifest_except_allowed_extraction(
+def test_copier_template_render_matches_frozen_manifest_except_allowed_extraction(
     tmp_path: Path,
 ) -> None:
     repository = Path(__file__).parents[1]
@@ -22,7 +22,7 @@ def test_baseline_render_matches_frozen_manifest_except_allowed_extraction(
             repository
             / "tests"
             / "fixtures"
-            / "copier-baseline"
+            / "copier-template"
             / "migration-manifest.json"
         ).read_text()
     )
