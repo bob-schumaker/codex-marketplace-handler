@@ -2,28 +2,26 @@
 
 ## Current focus
 
-Prepare the Copier template to build and embed a canonical v3 generated
-marketplace payload, as specified by `specs/003-generated-plugin-copier-publisher.md`.
+Maintain the implemented `marketplace-installer` library and its
+`marketplace-publisher` Copier product as one versioned contract.
 
 ## Current status
 
-- Done: `marketplace-installer` contains the v3 router-plugin packager closure,
-  generated-plugin marketplace publisher, integrity manifests, runtime
-  dependencies, console commands, and migrated regression suites.
-- Done: the root library wheel and existing Copier product wheel have isolated
-  integration coverage.
-- Done: specs 002 and 003 define library/template separation and the approved
-  canonical generated-payload direction.
-- Current template behavior remains legacy: its repository-only importer copies
-  an existing local marketplace into `resources/marketplace.json`.
+- Done: `marketplace-installer` version `0.1.1` contains the v3 router-plugin
+  packager closure, canonical assembly, portable validation, package-resource
+  staging, embedded publication, integrity manifests, and regression suites.
+- Done: the Copier template replaces the legacy importer with
+  `scripts/build_marketplace.py`; it builds a generated plugin from explicit
+  repository inputs and stages the canonical payload in package resources.
+- Done: rendered CLI, Copier migration, and offline two-wheel tests cover the
+  v3 payload contract; the full pytest suite passed after implementation.
+- Done: specs 001–003 now state their historical/current authority boundaries.
 
 ## Next steps
 
-1. Implement the public v3 canonical-assembly, embedded-publication, staging,
-   and portable-validation seams required by spec 003; version the library and
-   record the generated-payload minimum dependency.
-2. Add library-first assembly/staging parity and failure tests.
-3. Migrate the Copier template, fixtures, rendered tests, and wheel test from
-   legacy importer payloads to generated canonical payloads.
-4. Re-run the complete suite and build/wheel isolation checks before adopting
-   the template in another project.
+1. Publish `marketplace-installer` `0.1.1` to the approved PyPI release path
+   before downstream Copier products adopt the generated-payload dependency.
+2. Authorize and perform downstream adoption separately; generated products
+   must use the bounded `>=0.1.1,<0.2.0` dependency.
+3. Preserve direct and Copier integration coverage when changing the shared
+   installer contract.
