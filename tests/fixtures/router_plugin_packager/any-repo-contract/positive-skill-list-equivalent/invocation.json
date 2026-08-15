@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "input_mode": "skill_list",
+  "repository_root": ".",
+  "output_root": "./.codex-plugin/router-plugin-packager/generated/ponytail",
+  "skill_paths": [
+    "skills/ponytail",
+    "skills/ponytail-audit",
+    "skills/ponytail-debt",
+    "skills/ponytail-gain",
+    "skills/ponytail-help",
+    "skills/ponytail-review"
+  ],
+  "publisher_slug_override": "bob-schumaker-codex-support",
+  "plugin_slug_override": "ponytail",
+  "display_name_override": "Ponytail",
+  "surface_id_override": "ponytail",
+  "branding_asset_overrides": {
+    "logo": "assets/logo.png",
+    "dark_logo": "assets/logo-dark.png",
+    "composer_icon": "assets/logo.png"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "source_root": "skills",
+  "repository_root": ".",
+  "output_root": "./.codex-plugin/router-plugin-packager/generated/ponytail",
+  "surface_id": "ponytail",
+  "skill_ids": [
+    "ponytail",
+    "ponytail-audit",
+    "ponytail-debt",
+    "ponytail-gain",
+    "ponytail-help",
+    "ponytail-review"
+  ],
+  "plugin_metadata": {
+    "publisher_slug": "bob-schumaker-codex-support",
+    "plugin_slug": "ponytail",
+    "display_name": "Ponytail",
+    "packaging_mode": "router-surface",
+    "branding_assets": {
+      "logo": "assets/logo.png",
+      "dark_logo": "assets/logo-dark.png",
+      "composer_icon": "assets/logo.png"
+    }
+  },
+  "decision_record": {
+    "input_mode": "repo_bootstrap",
+    "surface_id_source": "derived",
+    "skill_ids_source": "discovered",
+    "plugin_metadata_sources": {
+      "publisher_slug": "override-or-repo-default",
+      "plugin_slug": "discovered",
+      "display_name": "discovered",
+      "branding_assets": "discovered"
+    },
+    "rejected_candidates": []
+  }
+}

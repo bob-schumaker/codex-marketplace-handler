@@ -1,0 +1,26 @@
+{
+  "$id": "https://example.invalid/router-plugin-release-metadata.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Router plugin release metadata",
+  "type": "object",
+  "required": [
+    "format_version",
+    "packager_format_version",
+    "payload_fingerprint",
+    "runtime_compatibility_version",
+    "integration_points",
+    "verification_targets"
+  ],
+  "properties": {
+    "format_version": {"const": 1},
+    "packager_format_version": {"const": 1},
+    "payload_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtime_compatibility_version": {"type": "string", "minLength": 1},
+    "migration_contract_version": {"type": ["string", "null"]},
+    "rollback_compatibility_hints": {"type": ["object", "null"]},
+    "control_surface": {"type": ["object", "null"]},
+    "owned_integration_root": {"type": ["string", "null"]},
+    "integration_points": {"type": "array", "items": {"type": "object"}},
+    "verification_targets": {"type": "array", "items": {"type": "object"}}
+  }
+}

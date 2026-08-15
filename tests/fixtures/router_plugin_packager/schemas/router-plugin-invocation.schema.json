@@ -1,0 +1,158 @@
+{
+  "$id": "https://example.invalid/router-plugin-invocation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Router plugin packager invocation",
+  "type": "object",
+  "required": ["format_version", "repository_root", "output_root"],
+  "oneOf": [
+    {
+      "properties": {"format_version": {"const": 1}},
+      "required": ["input_mode"]
+    },
+    {
+      "properties": {
+        "format_version": {"const": 2},
+        "surface_mode": {"const": "legacy"}
+      },
+      "required": ["input_mode"]
+    },
+    {
+      "properties": {
+        "format_version": {"const": 2},
+        "surface_mode": {"const": "native_routed"}
+      },
+      "required": [
+        "surface_mode",
+        "source_manifest",
+        "generated",
+        "router_authority"
+      ],
+      "not": {"required": ["input_mode"]}
+    }
+  ],
+  "properties": {
+    "format_version": {"enum": [1, 2]},
+    "surface_mode": {"enum": ["legacy", "native_routed"]},
+    "input_mode": {"enum": ["repo_bootstrap", "skill_list", "catalog"]},
+    "repository_root": {"type": "string", "minLength": 1},
+    "output_root": {"type": "string", "minLength": 1},
+    "source_manifest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "(^|/)[.]codex-plugin/plugin[.]json$"
+    },
+    "generated": {"$ref": "#/$defs/generatedIdentity"},
+    "router_authority": {"$ref": "#/$defs/routerAuthority"},
+    "publication": {"$ref": "#/$defs/publication"},
+    "payload_assets": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/payloadAsset"}
+    },
+    "control_surface": {"$ref": "#/$defs/controlSurface"},
+    "owned_integration_root": {"type": "string", "minLength": 1},
+    "integration_points": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/integrationPoint"}
+    }
+  },
+  "$defs": {
+    "publication": {
+      "type": "object",
+      "required": ["category"],
+      "properties": {
+        "category": {"const": "Productivity"}
+      },
+      "additionalProperties": false
+    },
+    "generatedIdentity": {
+      "type": "object",
+      "required": ["name", "surface_id"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "surface_id": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "routerAuthority": {
+      "type": "object",
+      "oneOf": [
+        {
+          "required": ["catalog", "catalog_path"],
+          "properties": {
+            "catalog": {"type": "string", "minLength": 1},
+            "catalog_path": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["routers"],
+          "properties": {
+            "routers": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/explicitRouter"}
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "explicitRouter": {
+      "type": "object",
+      "required": ["name", "description", "members"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "additionalProperties": false
+    },
+    "payloadAsset": {
+      "type": "object",
+      "required": ["id", "acquisition_mode", "source", "destination", "ownership_role"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "acquisition_mode": {"enum": ["copied", "pre_generated", "templated"]},
+        "source": {"type": "string", "minLength": 1},
+        "source_glob": {"type": "string", "minLength": 1},
+        "destination": {"type": "string", "minLength": 1},
+        "ownership_role": {"type": "string", "minLength": 1},
+        "ownership_class": {
+          "enum": [
+            "immutable-runtime-artifact",
+            "replaceable-upgrade-artifact",
+            "preserved-user-state-artifact",
+            "owned-integration-artifact"
+          ]
+        },
+        "exclude": {"type": "array", "items": {"type": "string"}},
+        "provenance_path": {"type": "string", "minLength": 1},
+        "template_parameters": {"type": "object"}
+      }
+    },
+    "controlSurface": {
+      "type": "object",
+      "required": ["skill_id", "operations"],
+      "properties": {
+        "skill_id": {"type": "string", "minLength": 1},
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "integrationPoint": {
+      "type": "object",
+      "required": ["id", "target_relpath"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "target_relpath": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

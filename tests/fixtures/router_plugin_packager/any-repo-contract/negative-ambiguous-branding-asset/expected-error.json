@@ -1,0 +1,12 @@
+{
+  "error_code": "ambiguous_branding_asset",
+  "message": "multiple equally strong branding asset candidates remain for one slot",
+  "details": {
+    "slot": "logo",
+    "candidates": [
+      "assets/logo.png",
+      "assets/ponytail/logo.png"
+    ],
+    "resolution": "provide branding_asset_overrides.logo"
+  }
+}

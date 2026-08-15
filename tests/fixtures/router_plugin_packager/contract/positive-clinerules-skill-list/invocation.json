@@ -1,0 +1,19 @@
+{
+  "format_version": 1,
+  "input_mode": "skill_list",
+  "repository_root": ".",
+  "output_root": "./.codex-plugin/router-plugin-packager/generated/obsidian-workflows",
+  "skill_paths": [
+    "corpus/capabilities/obsidian-memory",
+    "corpus/capabilities/obsidian-vault"
+  ],
+  "publisher_slug_override": "bob-schumaker-codex-support",
+  "plugin_slug_override": "obsidian-workflows",
+  "display_name_override": "Obsidian Workflows",
+  "surface_id_override": "obsidian-workflows",
+  "branding_asset_overrides": {
+    "logo": "assets/obsidian-workflows/logo.png",
+    "dark_logo": "assets/obsidian-workflows/logo-dark.png",
+    "composer_icon": "assets/obsidian-workflows/composer-icon.png"
+  }
+}
