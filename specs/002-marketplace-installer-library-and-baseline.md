@@ -6,7 +6,8 @@ Restructure this repository into two independently built artifacts while it
 retains the `marketplace-publisher` repository name:
 
 - `marketplace-installer` is the canonical, reusable Python distribution for
-  safely installing an embedded Codex local marketplace.
+  packaging Codex router plugins and safely installing an embedded Codex local
+  marketplace.
 - `marketplace-publisher` is the payload-bearing product generated from this
   repository's Copier template. It embeds a marketplace payload and consumes
   `marketplace-installer` as a normal dependency.
@@ -83,11 +84,25 @@ It owns all generic local-marketplace mechanics:
 - same-name catalog merge behavior and different-name conflict handling;
 - publisher-state persistence and ownership/modification conflict behavior;
 - publication result and expected error models; and
-- importer validation and resource-payload replacement logic.
+- importer validation and resource-payload replacement logic; and
+- transactional publication and validation of generated router-plugin trees
+  into local marketplaces.
+
+It also owns the complete v3 router-plugin packager closure: the router
+packager, first-user and MCP flows, setup flow, runtime lifecycle, launcher,
+their support modules, and the integrity manifest that declares that closure.
+Those operations are exposed through the package modules and the
+`marketplace-installer`, `router-plugin-packager`,
+`router-plugin-first-user-flow`, `mcp-plugin-packaging-customer-flow`,
+`router-plugin-packager-setup`, `plugin-runtime-lifecycle`, and
+`codex-packaging-toolchain` console commands. The package requires Python
+3.12 or newer plus the manifest-pinned `packaging` and `PyYAML` runtime
+dependencies.
 
 The library distribution must contain no marketplace payload, product
-`resources/` tree, payload-specific `__main__.py`, product console-script entry
-point, or `marketplace_publisher` package.
+`resources/` tree, payload-specific `__main__.py`, product console-script
+entry point, or `marketplace_publisher` package. The v3 package console
+commands above are library entry points, not product entry points.
 
 The established `publish_marketplace(resource_root, home, ...)` behavior,
 publisher-state format, and documented error behavior remain compatible.
@@ -299,6 +314,8 @@ Tests must establish all of the following:
   no private module;
 - the root wheel and sdist contain `marketplace_installer` but contain neither
   `marketplace_publisher` nor payload resources or product console scripts;
+  they include the v3 toolchain manifests and its declared library console
+  commands;
 - the rendered Copier template contains no copied shared publisher implementation;
 - before PyPI publication, a fresh temporary environment installs the exact
   built library and rendered product wheels with `--no-deps`; it has a temporary
