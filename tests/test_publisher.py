@@ -3,11 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from marketplace_publisher.publisher import (
+from marketplace_installer.publisher import (
     MarketplaceConflictError,
     ModificationConflictError,
     PublisherError,
     UnmanagedPluginConflictError,
+    publish_embedded_marketplace,
     publish_marketplace,
 )
 
@@ -62,6 +63,23 @@ def test_fresh_publish_installs_catalog_plugins_and_state(tmp_path: Path) -> Non
     assert (target_root(home) / "plugins" / "alpha" / "skill.md").read_text() == "alpha"
     state = target_root(home) / ".marketplace-publisher" / "state.json"
     assert "skill.md" in json.loads(state.read_text())["plugins"]["alpha"]["files"]
+
+
+def test_publish_embedded_marketplace_uses_caller_resource_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package_root = tmp_path / "payload_package"
+    resources = package_root / "resources"
+    resources.mkdir(parents=True)
+    (package_root / "__init__.py").write_text("")
+    (resources / "__init__.py").write_text("")
+    write_embedded(resources, {"alpha": "alpha"})
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    result = publish_embedded_marketplace("payload_package.resources", home=tmp_path)
+
+    assert result.status == "installed"
+    assert (target_root(tmp_path) / "plugins" / "alpha" / "skill.md").is_file()
 
 
 def test_same_name_merge_preserves_unrelated_content_and_updates_owned_plugin(
@@ -277,7 +295,7 @@ def test_catalog_write_failure_preserves_existing_catalog(
     state_before = state_path.read_text()
     write_embedded(resources, {"alpha": "second"})
 
-    import marketplace_publisher.publisher as publisher
+    import marketplace_installer.publisher as publisher
 
     original_write = publisher._atomic_write_json
 

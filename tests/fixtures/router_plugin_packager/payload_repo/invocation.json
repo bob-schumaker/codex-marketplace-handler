@@ -1,0 +1,65 @@
+{
+  "control_surface": {
+    "operations": [
+      "verify"
+    ],
+    "skill_id": "alpha"
+  },
+  "owned_integration_root": "managed-boundary",
+  "format_version": 1,
+  "input_mode": "skill_list",
+  "integration_points": [
+    {
+      "id": "hook-a",
+      "mode": "verify-only",
+      "target_relpath": "managed-boundary/hook-a"
+    }
+  ],
+  "migration_contract_version": "v1",
+  "output_root": "./generated-output/plugin",
+  "payload_assets": [
+    {
+      "acquisition_mode": "copied",
+      "destination": "payload/copied.txt",
+      "id": "copied-doc",
+      "ownership_class": "immutable-runtime-artifact",
+      "ownership_role": "runtime-asset",
+      "source": "assets/copied.txt"
+    },
+    {
+      "acquisition_mode": "pre_generated",
+      "destination": "payload/registry.json",
+      "id": "pre-generated-registry",
+      "ownership_class": "replaceable-upgrade-artifact",
+      "ownership_role": "runtime-asset",
+      "provenance_path": "generated/registry.provenance.json",
+      "source": "generated/registry.json"
+    },
+    {
+      "acquisition_mode": "templated",
+      "destination": "payload/config.txt",
+      "id": "templated-config",
+      "ownership_class": "owned-integration-artifact",
+      "ownership_role": "runtime-config",
+      "source": "templates/config.txt.tmpl",
+      "template_parameters": {
+        "mode": "test",
+        "name": "alpha"
+      }
+    }
+  ],
+  "repository_root": ".",
+  "rollback_compatibility_hints": {
+    "compatible": true
+  },
+  "runtime_compatibility_version": "2026.07",
+  "skill_paths": [
+    "skills/alpha"
+  ],
+  "verification_targets": [
+    {
+      "id": "smoke",
+      "path": "payload/config.txt"
+    }
+  ]
+}

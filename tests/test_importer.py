@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from marketplace_publisher.importer import ImportError, import_marketplace
+from marketplace_installer.importer import ImportError, import_marketplace
 
 
 def write_marketplace(root: Path, plugins: list[str]) -> None:

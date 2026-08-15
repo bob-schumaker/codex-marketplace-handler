@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "input_mode": "skill_list",
+  "source_root": "skills",
+  "repository_root": ".",
+  "output_root": "./generated/ponytail",
+  "skill_paths": [
+    "skills/ponytail",
+    "skills/ponytail",
+    "skills/ponytail-review"
+  ],
+  "publisher_slug_override": "bob-schumaker-codex-support",
+  "plugin_slug_override": "ponytail",
+  "display_name_override": "Ponytail",
+  "surface_id_override": "ponytail"
+}

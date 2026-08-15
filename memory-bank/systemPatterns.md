@@ -1,50 +1,50 @@
 # System Patterns
 
-## Package resources
+## Two artifacts, one contract
 
-Load bundled marketplace files through `importlib.resources`, never relative
-to the caller's working directory. A product payload consists of the
-marketplace JSON and complete selected plugin directories, contains no absolute
-source-marketplace paths, and remains usable after distribution as a wheel.
+The root Poetry project builds `marketplace-installer`; `copier-template/`
+renders a separate `marketplace-publisher` product that depends on that
+library. The template contains product concerns only and must not carry copied
+installer logic.
 
-This source repository intentionally carries only empty resource-package
-markers. The repository-only importer is the supported way to add a selected
-marketplace payload for a product build; only catalog entries define payload
-ownership.
+## V3 installer closure
 
-## Marketplace identity
+`src/marketplace_installer/` owns the complete router-plugin packager, MCP and
+setup flows, runtime lifecycle, generated-plugin marketplace publisher, and
+toolchain manifests. Internal imports use `marketplace_installer`, not an
+external source tree. The library owns the shared contract and its full
+regression suite.
 
-Each local marketplace is rooted at
-`~/.codex/local-marketplaces/<marketplace-name>/`. Its catalog is
-`.agents/plugins/marketplace.json`, and local plugin entries use
-`./plugins/<plugin-name>` relative to that root.
+## Marketplace safety
 
-## Merge contract
+Local marketplace trees use `.agents/plugins/marketplace.json` and relative
+`./plugins/<plugin-name>` entries. Validate JSON, paths, receipt/metadata, and
+regular file trees before mutation; reject symlinks and avoid executing plugin
+code. Existing merge publication preserves unrelated content and protects
+modified package-owned files unless forced.
 
-- Treat the installed same-name marketplace as the base document.
-- Preserve unknown top-level metadata and unrelated plugin entries.
-- Add absent embedded plugins, leave identical entries, and replace changed
-  entries with the embedded versions.
-- Replace embedded `interface` metadata when it is supplied.
-- Maintain one entry per plugin name and update only package-supplied plugin
-  files without deleting extra destination files.
+## Canonical generated payload
 
-## Safety
+Spec 003 defines a single-plugin canonical assembly root with `.agents/`,
+`plugins/`, and a portable fixed assembly receipt. `assemble_generated_plugin`
+creates that artifact after strict source-aware v3 validation; the direct
+workflow continues to publish a generated plugin with
+`publish_generated_plugin`. The Copier workflow calls
+`stage_marketplace_payload` to copy the same regular files into resources,
+adding only `resources/__init__.py`. Receipt portability and byte-for-byte
+path/digest parity are library responsibilities, not template rewrites.
 
-Validate JSON and safe local paths before mutation; reject symlinks and paths
-that escape the expected plugin root. Write marketplace JSON atomically and do
-not run plugin code while publishing.
+Portable validation of the embedded canonical root is distinct from validation
+of its mutable operational destination. The latter permits only the library's
+transaction, receipt, and lock artifacts in addition to a regular marketplace
+tree; those artifacts never become package payload or conflict state.
 
-## Copier bootstrap
+## Template boundary and installed publication
 
-`copier-template/` is a self-contained source template. It renders a named
-distribution, console script, and Python package while retaining the
-repository-only importer and empty resource-package markers. It intentionally
-does not render `memory-bank/`, `specs/`, or any marketplace payload.
-
-## Payload formatting boundary
-
-Imported plugin trees are copied as-is. Ruff and Rumdl exclude the package
-resource tree so project quality checks do not rewrite bundled plugin source or
-documentation. The Copier template renders matching exclusions for future
-payload-bearing installers.
+The template's repository-only `scripts/build_marketplace.py` resolves explicit
+consumer-repository and invocation paths, runs the public packager, assembles a
+canonical payload under its ignored `.build/` directory, and stages it into
+resources. The installed CLI calls
+`publish_embedded_generated_marketplace`; it never regenerates the plugin or
+reads a configured marketplace. The product adapter may use only public
+library APIs and maps the library result to the stable CLI JSON envelope.

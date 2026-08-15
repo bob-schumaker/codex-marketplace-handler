@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+import subprocess
+import zipfile
+from pathlib import Path
+
+
+def test_built_wheel_excludes_repository_build_material(tmp_path: Path) -> None:
+    repository = Path(__file__).parents[1]
+    distribution = tmp_path / "dist"
+    subprocess.run(
+        ["poetry", "build", "--output", str(distribution)],
+        cwd=repository,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    wheel = next(distribution.glob("*.whl"))
+    with zipfile.ZipFile(wheel) as archive:
+        names = archive.namelist()
+        entry_points = next(name for name in names if name.endswith("entry_points.txt"))
+        assert "scripts/build_marketplace.py" not in names
+        assert not any("/.build/" in name for name in names)
+        assert (
+            archive.read(entry_points).decode().strip()
+            == (
+                "[console_scripts]\n{{ project_slug }}={{ package_name }}.__main__:main\n"
+            ).strip()
+        )

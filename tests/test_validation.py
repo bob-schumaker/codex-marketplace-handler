@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from marketplace_publisher.validation import (
+from marketplace_installer.validation import (
     MarketplaceValidationError,
     parse_marketplace_json,
     resolve_plugin_directory,

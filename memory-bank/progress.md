@@ -2,38 +2,39 @@
 
 ## Working
 
-- A complete implementation specification exists at
-  `specs/001-embedded-local-marketplace.md`.
-- The specification requires an installed `__main__.py` so
-  `python -m marketplace_publisher` shares the console command's behavior and
-  exit status.
-- The specification has an implementation plan and TDD task list.
-- Poetry configuration and Ruff/Rumdl pre-commit tooling are configured.
-- The importer, publisher, state protection, CLI, and self-contained wheel
-  integration test are implemented and passing.
-- A tested Copier template creates custom-named installer repositories with no
-  embedded marketplace payload, memory bank, or specifications.
-- This source repository retains only empty resource-package markers; a final
-  product repository supplies its own marketplace catalog and plugin trees.
-- A representative 15-plugin payload was built, installed, and published into
-  an isolated local marketplace root before its source-repo cleanup.
-- Repository-local memory-bank routing and core context files are present.
+- `marketplace-installer` `0.1.1` is a Poetry-built v3 router-plugin installer
+  library with canonical assembly, portable payload validation/staging, and
+  embedded generated-marketplace publication.
+- The complete v3 regression suite is maintained in this repository: core
+  packager, layer-3 marketplace publication, MCP customer flow, setup, runtime
+  lifecycle, first-user flow, closure, Copier, and wheel tests.
+- `copier-template/` renders a payload-bearing publisher that builds a v3
+  payload through `scripts/build_marketplace.py` and consumes the library as a
+  normal bounded dependency.
+- Specs 002 and 003 are committed implementation contracts for the completed
+  two-artifact layout and generated-payload workflow; 001 is archived history.
 
 ## In flight
 
-- No implementation work is in flight.
+- No code migration is in flight. The generated-payload implementation is
+  complete and awaiting a separately authorized release/adoption decision.
 
 ## Remaining
 
-- Create a product repository with Copier or add a selected payload here when a
-  release is explicitly desired.
+1. Publish `marketplace-installer` `0.1.1` before downstream product adoption.
+2. Perform downstream adoption and any future corporate package-source work
+   under separate authorization.
+3. Maintain direct, rendered-product, and two-wheel coverage for shared
+   contract changes.
 
 ## Risks and follow-ups
 
-- Keep embedded `source.path` values relative to each local marketplace root.
-- Preserve the spec's staged-copy, state-manifest, and no-cross-marketplace
-  guarantees during implementation.
-- Do not add a marketplace or plugin selection to this source repository
-  without an explicit release decision.
-- Keep the Copier template's source tree aligned with publisher changes; its
-  rendered project has its own package name and console-script contract.
+- Treat the v3 installer as a shared contract: this repository must own and
+  validate compatibility changes before downstream consumers adopt them.
+- Keep the direct operational path and Copier path on one canonical payload;
+  do not introduce a template-specific marketplace representation.
+- Preserve isolated-wheel tests and avoid path/editable dependencies in
+  rendered product metadata.
+- Keep first-user-flow tests importing `marketplace_installer` directly so
+  the packaged library, rather than a source-script loader, remains the test
+  authority.

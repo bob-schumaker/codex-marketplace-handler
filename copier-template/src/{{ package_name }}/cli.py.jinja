@@ -1,0 +1,78 @@
+"""Command-line interface for publishing an embedded marketplace."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Sequence
+
+from .publisher import MarketplacePublishError, publish_embedded_marketplace
+
+
+def main(argv: Sequence[str] | None = None, *, home: Path | None = None) -> int:
+    """Run the installed marketplace publisher."""
+    parser = argparse.ArgumentParser(prog="{{ project_slug }}")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--json", action="store_true", dest="json_output")
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args(argv)
+
+    if args.verbose:
+        print("Publishing embedded marketplace", file=sys.stderr)
+    try:
+        result = publish_embedded_marketplace(
+            home or Path.home(), dry_run=args.dry_run, force=args.force
+        )
+    except MarketplacePublishError as error:
+        return _report_error(str(error), json_output=args.json_output)
+
+    if args.json_output:
+        print(
+            json.dumps(
+                {
+                    "status": result["status"],
+                    "marketplace": result["marketplace"],
+                    "dry_run": result["dry_run"],
+                    "plugins": {
+                        "added": result["added"],
+                        "updated": result["updated"],
+                        "unchanged": result["unchanged"],
+                        "conflicts": result["conflicts"],
+                    },
+                    "errors": [],
+                }
+            )
+        )
+    else:
+        print(
+            f"{result['status']} marketplace {result['marketplace']}: "
+            f"{len(result['added'])} added, {len(result['updated'])} updated, "
+            f"{len(result['unchanged'])} unchanged"
+        )
+    return 0
+
+
+def _report_error(message: str, *, json_output: bool) -> int:
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "marketplace": None,
+                    "dry_run": False,
+                    "plugins": {
+                        "added": [],
+                        "updated": [],
+                        "unchanged": [],
+                        "conflicts": [],
+                    },
+                    "errors": [message],
+                }
+            )
+        )
+    else:
+        print(f"{{ project_slug }}: {message}", file=sys.stderr)
+    return 1
