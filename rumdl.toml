@@ -1,2 +1,2 @@
 [global]
-exclude = ["baseline/src/{{ package_name }}/resources/**"]
+exclude = ["copier-template/src/{{ package_name }}/resources/**"]

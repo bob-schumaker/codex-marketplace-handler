@@ -1,6 +1,6 @@
 _min_copier_version: "9.0.0"
 _templates_suffix: .jinja
-_subdirectory: baseline
+_subdirectory: copier-template
 _answers_file: .copier-answers.yml
 _exclude:
   - __pycache__

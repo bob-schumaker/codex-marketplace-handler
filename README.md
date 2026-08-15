@@ -1,7 +1,7 @@
 # Marketplace Publisher
 
 `marketplace-publisher` contains two related artifacts: the reusable
-`marketplace-installer` library and a Copier baseline for payload-bearing
+`marketplace-installer` library and a Copier template for payload-bearing
 `marketplace-publisher` product repositories. The library deliberately
 contains no marketplace catalog or plugin payload.
 

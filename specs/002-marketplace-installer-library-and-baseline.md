@@ -1,4 +1,4 @@
-# Marketplace Installer Library and Publisher Baseline
+# Marketplace Installer Library and Copier Template
 
 ## Goal
 
@@ -8,7 +8,7 @@ retains the `marketplace-publisher` repository name:
 - `marketplace-installer` is the canonical, reusable Python distribution for
   safely installing an embedded Codex local marketplace.
 - `marketplace-publisher` is the payload-bearing product generated from this
-  repository's Copier baseline. It embeds a marketplace payload and consumes
+  repository's Copier template. It embeds a marketplace payload and consumes
   `marketplace-installer` as a normal dependency.
 
 This specification replaces the packaging and template-structure portions of
@@ -23,8 +23,8 @@ All changes are confined to this repository.
 In scope:
 
 - create and package the `marketplace-installer` library;
-- make `baseline/` the sole Copier-rendered `marketplace-publisher` product;
-- move the current template content into that baseline;
+- make `copier-template/` the sole Copier-rendered `marketplace-publisher` product;
+- move the current template content into that Copier template;
 - define the public seams between a payload product and the library;
 - update repository tests, Copier metadata, documentation, and provenance
   checks for the two-artifact model.
@@ -38,7 +38,7 @@ Out of scope:
   automation;
 - installing into a real Codex home;
 - custom package sources, credentials, local/editable dependencies, or a
-  rendered lockfile in the baseline;
+  rendered lockfile in the Copier template;
 - changes to the Codex marketplace schema.
 
 ## Repository layout
@@ -48,7 +48,7 @@ The repository must have this logical layout:
 ```text
 marketplace-publisher/
   copier.yml
-  baseline/
+  copier-template/
     src/{{ package_name }}/
     scripts/
     tests/
@@ -60,8 +60,8 @@ marketplace-publisher/
   memory-bank/
 ```
 
-`copier.yml` is at the repository root and declares `_subdirectory: baseline`.
-`baseline/` is the only Copier rendering tree. The legacy
+`copier.yml` is at the repository root and declares `_subdirectory: copier-template`.
+`copier-template/` is the only Copier rendering tree. The legacy
 `copier-template/template/` tree must not remain as a second rendering path.
 Root-level `specs/` and `memory-bank/` are repository control material and are
 not part of rendered products.
@@ -154,15 +154,15 @@ The canonical public import surface is the `marketplace_installer` package root:
 | Errors | `PublisherError`, `MarketplaceConflictError`, `ModificationConflictError`, `UnmanagedPluginConflictError`, `ImportError` |
 
 Library-wheel consumer tests must import these symbols from the package root.
-The baseline may import only these public paths.
+The Copier template may import only these public paths.
 `PublisherError` and its three listed subclasses are the complete supported
 publish-error surface; `ImportError` is the complete supported import-error
 surface. `MarketplaceValidationError`, `PathSafetyError`, `MarketplacePaths`,
 and parsing/path-validation helpers are library-private in version `0.1.0`.
 
-### `marketplace-publisher` baseline
+### `marketplace-publisher` Copier template
 
-The Copier baseline renders the payload-bearing `marketplace-publisher`
+The Copier template renders the payload-bearing `marketplace-publisher`
 project. Its default distribution name is `marketplace-publisher`; its normal
 Python package name is `marketplace_publisher`. Copier validation must reject a
 rendered distribution or package-name collision with the library. Set
@@ -173,7 +173,7 @@ Render tests cover defaults, a valid custom name, and rejected
 `marketplace-installer`, `marketplace--installer`, and
 `marketplace_installer` collisions.
 
-The baseline owns only product-specific concerns:
+The Copier template owns only product-specific concerns:
 
 - embedded `marketplace.json` and plugin resources;
 - the product console script and `__main__` entry point;
@@ -182,12 +182,12 @@ The baseline owns only product-specific concerns:
 - the repository-only `scripts/import_marketplace.py` wrapper and its resource
   directory lookup.
 
-The baseline preserves the existing `--dry-run`, `--force`, `--json`, and
+The Copier template preserves the existing `--dry-run`, `--force`, `--json`, and
 `--verbose` flags; exit statuses; JSON success/error schema; and stdout/stderr
 routing. It may call only public `marketplace_installer` APIs for importer and
 publisher behavior. It must not carry copied shared installer implementation.
 
-The baseline retains a thin `publisher.py` adapter. It derives its resource
+The Copier template retains a thin `publisher.py` adapter. It derives its resource
 package as `f"{__package__}.resources"`, exposes the existing zero-argument
 `publish_embedded_marketplace(home=None, *, dry_run=False, force=False)` shape,
 and forwards to the public library API. The product CLI imports this adapter.
@@ -202,23 +202,23 @@ the canonical `marketplace_installer` surface; only the embedded-publisher
 adapter and repository resource lookup may add product-specific behavior. An
 import-only compatibility test covers these legacy paths.
 
-The baseline declares `marketplace-installer >=0.1.0,<0.2.0` through default
+The Copier template declares `marketplace-installer >=0.1.0,<0.2.0` through default
 PyPI resolution. Its rendered `pyproject.toml` declares that exact requirement
 in PEP 621 `[project].dependencies`; `[tool.poetry]` contains only
-Poetry-specific package and include configuration. The baseline contains no
-custom source, credentials, local path, editable dependency, or rendered
-lockfile.
+Poetry-specific package and include configuration. The Copier template
+contains no custom source, credentials, local path, editable dependency, or
+rendered lockfile.
 
 ## Copier identity and provenance
 
-A rendered product's baseline identity consists only of:
+A rendered product's template identity consists only of:
 
 - the resolved full VCS commit SHA for this template repository (with a
   requested tag or ref recorded only as supplemental context);
-- Copier's `_subdirectory: baseline`; and
+- Copier's `_subdirectory: copier-template`; and
 - the declared `marketplace-installer` version range.
 
-The product must record this provenance. Do not introduce a separate baseline
+The product must record this provenance. Do not introduce a separate template
 version. The repository's Copier version, template revision, answers, and a
 known rendered fixture are frozen as test provenance before migration work
 relies on them.
@@ -232,7 +232,7 @@ by the rendered `pyproject.toml`; do not add a second provenance file or custom
 render wrapper.
 
 Before any file move, create
-`tests/fixtures/copier-baseline/migration-manifest.json`. It is the sole
+`tests/fixtures/copier-copier-template/migration-manifest.json`. It is the sole
 versioned authority for migration evidence. It is loaded with the standard
 library `json` module and has only:
 
@@ -246,7 +246,7 @@ The comparison test rejects any unlisted difference. Except for the VCS fields
 in `.copier-answers.yml`, it compares rendered-file bytes directly; do not
 normalize timestamp, whitespace, generated-file, or glob categories.
 `memory-bank/` and `specs/` remain root-only. The move map classifies
-`models.py`, `paths.py`, and `validation.py` as removed private baseline modules;
+`models.py`, `paths.py`, and `validation.py` as removed private template modules;
 their library tests move with the implementation.
 
 ## Migration sequence and comparison controls
@@ -255,11 +255,11 @@ their library tests move with the implementation.
    The pre-move fixture exposes the current `copier-template/` contents as the
    root of a temporary VCS source and renders it with Copier at the recorded
    commit. The manifest records the raw digest inventory.
-2. Relocate the template into `baseline/`, move `copier.yml` to the repository
-   root, set `_subdirectory: baseline`, and render from the repository-root VCS
-   source at its recorded commit. Compare against the frozen manifest and assert
-   that no root control material is rendered. At this point only the VCS fields
-   in `.copier-answers.yml` may differ.
+2. Relocate the template into `copier-template/`, move `copier.yml` to the
+   repository root, set `_subdirectory: copier-template`, and render from the
+   repository-root VCS source at its recorded commit. Compare against the
+   frozen manifest and assert that no root control material is rendered. At
+   this point only the VCS fields in `.copier-answers.yml` may differ.
 3. Extract the library and public seams. A reviewed migration manifest then
    permits only its `allowed_changes`: enumerated shared-module/test removals,
    thin integration files, and the rendered
@@ -281,7 +281,7 @@ marketplace catalog persistence.
 
 The library is payload-agnostic. It must not know corpus cohorts, payload
 selection, generated project names, or a product CLI identity. Conversely, the
-baseline must not duplicate generic installation logic.
+Copier template must not duplicate generic installation logic.
 
 ## Verification requirements
 
@@ -294,11 +294,12 @@ Tests must establish all of the following:
   publisher-state conflicts, dry runs, and write-failure recovery;
 - the public resource-location API works from unpacked resources and an
   installed wheel;
-- a library-wheel consumer-contract test imports every documented public symbol
-  from `marketplace_installer` and proves the baseline imports no private module;
+- a library-wheel consumer-contract test imports every documented public
+  symbol from `marketplace_installer` and proves the Copier template imports
+  no private module;
 - the root wheel and sdist contain `marketplace_installer` but contain neither
   `marketplace_publisher` nor payload resources or product console scripts;
-- the rendered baseline contains no copied shared publisher implementation;
+- the rendered Copier template contains no copied shared publisher implementation;
 - before PyPI publication, a fresh temporary environment installs the exact
   built library and rendered product wheels with `--no-deps`; it has a temporary
   `HOME`, no `PYTHONPATH`, and a working directory outside checkout/build trees.
@@ -308,7 +309,7 @@ Tests must establish all of the following:
   `Requires-Dist` with `SpecifierSet(">=0.1.0,<0.2.0")` parsed using the direct
   test dependency `packaging`; and
 - `.copier-answers.yml` records the resolved full commit SHA and VCS source;
-  root `copier.yml` records `_subdirectory: baseline`; and the rendered
+  root `copier.yml` records `_subdirectory: copier-template`; and the rendered
   `pyproject.toml` records the library version range.
 
 Every behavior-changing implementation follows the repository RED, GREEN,
