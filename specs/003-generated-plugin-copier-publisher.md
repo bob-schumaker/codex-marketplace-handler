@@ -108,6 +108,57 @@ These modules, their stated signatures, result fields, and typed expected
 errors are public compatibility surfaces. The rendered product may not import
 private helpers from them.
 
+### Router-packager facade boundary migration
+
+`router_plugin_packager.py` currently contains both the supported `run`/`main`
+entrypoints and a compatibility facade of underscored forwarding helpers. The
+facade is not dead code: the first-user flow, MCP customer flow, setup helper,
+and tests import those helpers while the projected toolchain can execute from a
+source checkout. It must therefore not be removed as a mechanical cleanup.
+
+The target boundary is:
+
+- `router_plugin_packager.py` owns CLI orchestration and the documented public
+  `PackagerError`, `run`, and `main` seam;
+- domain modules own their named operations (for example source discovery,
+  branding discovery, text normalization, hashing, parsing, and MCP
+  normalization);
+- sibling shipped scripts import only explicitly named, non-underscored module
+  operations; and
+- tests exercise those owning modules directly, except for end-to-end tests of
+  the documented packager entrypoints.
+
+The migration is a separate, behavior-preserving work item. It does not change
+invocation formats, generated output, receipt schemas, CLI arguments, or the
+public result/error contract. It must proceed in this order:
+
+1. Add a migration inventory for every currently consumed non-public facade
+   symbol, including helpers, constants, types, and errors. For each, record
+   its consumers, owning module, exact non-underscored replacement name and
+   signature, and characterization test. These replacement names are internal
+   package APIs for shipped scripts, not new third-party compatibility seams.
+2. Add the replacement names to the owning modules without changing the
+   facade; update one shipped-script or test consumer at a time.
+3. Keep the source-checkout toolchain closure complete after each consumer
+   move, including both toolchain manifests and the closure test.
+4. Remove a facade symbol only after repository searches show no shipped script
+   or test imports, references, or dynamically accesses it and its
+   owning-module tests preserve the behavior.
+5. Reduce `router_plugin_packager.py` to orchestration and its documented
+   public seam only after all forwarding helpers are gone.
+
+Acceptance requires an integration test that projects the toolchain and invokes
+every manifest entrypoint, plus an installed-entrypoint smoke or equivalent.
+For each script, projected and installed runs must agree on exit status and the
+documented JSON/error payload for one success and one expected failure. Both
+toolchain manifests must validate and have identical normalized inventories and
+digests; the test must detect a newly direct dependency missing from either
+manifest. No shipped script or test may import, reference, or dynamically
+access an underscored `router_plugin_packager` symbol, and a negative export
+check must prove the facade has no forwarding aliases outside its documented
+`PackagerError`, `run`, and `main` seam. The full packager, first-user-flow,
+setup, and MCP customer-flow test suites must pass.
+
 `run("apply", ...)` returns an absolute `output_root` path to the validated
 generated plugin tree. `assemble_generated_plugin` returns an absolute
 `assembly_root`, marketplace name, and plugin name. The build script consumes
