@@ -27,16 +27,19 @@ def json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def load_json(path: Path) -> dict[str, Any]:
     try:
-        return json.loads(
-            path.read_text(encoding="utf-8"), object_pairs_hook=json_object
-        )
+        return load_json_bytes(path.read_bytes(), path=path)
     except FileNotFoundError as exc:
         raise PackagerError(
             "missing_json_file",
             "required JSON input file does not exist",
             {"path": str(path.resolve())},
         ) from exc
-    except json.JSONDecodeError as exc:
+
+
+def load_json_bytes(content: bytes, *, path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(content.decode("utf-8"), object_pairs_hook=json_object)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PackagerError(
             "invalid_json_file",
             "required JSON input file is not valid JSON",

@@ -92,7 +92,7 @@ def summary(
     planned_paths = {request.output_root / rel for rel in outputs}
     stale_paths = stale_generated_paths_fn(request, planned_paths)
     stale_path_set = {Path(path) for path in stale_paths}
-    return {
+    payload = {
         "input_mode": request.input_mode,
         "surface_id": request.surface_id,
         "skill_ids": request.skill_ids,
@@ -110,6 +110,7 @@ def summary(
         "plugin_id": state["plugin_id"],
         "normalized_request": state["normalized_request"],
     }
+    return payload
 
 
 def summarize_outputs(

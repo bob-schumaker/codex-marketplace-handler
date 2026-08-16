@@ -157,6 +157,7 @@ def validate_catalog_skill_paths(
             source_manifest=invocation.source_manifest,
             generated=invocation.generated,
             router_authority=invocation.router_authority,
+            source_projection_receipt=invocation.source_projection_receipt,
         ),
         source_root,
     )

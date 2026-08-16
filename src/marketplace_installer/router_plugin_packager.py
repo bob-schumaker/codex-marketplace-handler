@@ -19,7 +19,9 @@ from marketplace_installer.router_plugin_packager_errors import PackagerError
 from marketplace_installer.router_plugin_packager_hashing import (
     canonical_json_bytes as _canonical_json_bytes,
 )
-from marketplace_installer.router_plugin_packager_hashing import hash_bytes as _hash_bytes
+from marketplace_installer.router_plugin_packager_hashing import (
+    hash_bytes as _hash_bytes,
+)
 from marketplace_installer.router_plugin_packager_hashing import hash_text as _hash_text
 from marketplace_installer.router_plugin_packager_hashing import hash_tree as _hash_tree
 from marketplace_installer.router_plugin_packager_branding import (
@@ -65,8 +67,12 @@ from marketplace_installer.router_plugin_packager_control import (
 from marketplace_installer.router_plugin_packager_control import (
     validate_integration_points as _validate_integration_points_impl,
 )
-from marketplace_installer.router_plugin_packager_io import print_error as _print_error_payload
-from marketplace_installer.router_plugin_packager_io import print_payload as _print_payload
+from marketplace_installer.router_plugin_packager_io import (
+    print_error as _print_error_payload,
+)
+from marketplace_installer.router_plugin_packager_io import (
+    print_payload as _print_payload,
+)
 from marketplace_installer.router_plugin_packager_io import write_json as _write_json
 from marketplace_installer.router_plugin_packager_invocation import (
     parse_invocation as _parse_invocation_impl,
@@ -192,6 +198,9 @@ from marketplace_installer.router_plugin_packager_parsing import (
     has_hidden_path_segment as _has_hidden_path_segment,
 )
 from marketplace_installer.router_plugin_packager_parsing import load_json as _load_json
+from marketplace_installer.router_plugin_packager_parsing import (
+    load_json_bytes as _load_json_bytes,
+)
 from marketplace_installer.router_plugin_packager_parsing import (
     load_source_plugin_manifest as _load_source_plugin_manifest,
 )
@@ -385,6 +394,9 @@ from marketplace_installer.router_plugin_packager_staging import (
 from marketplace_installer.router_plugin_packager_source import (
     bootstrap_state_path as _bootstrap_state_path_impl,
 )
+from marketplace_installer.router_plugin_packager_source_projection import (
+    verify_source_projection as _verify_source_projection,
+)
 from marketplace_installer.router_plugin_packager_source import (
     collect_skill_sources as _collect_skill_sources_impl,
 )
@@ -476,6 +488,7 @@ class Invocation:
     source_manifest: str | None
     generated: dict[str, str] | None
     router_authority: dict[str, Any] | None
+    source_projection_receipt: str | None
 
 
 @dataclass(frozen=True)
@@ -1628,6 +1641,9 @@ def run(command: str, invocation_path: Path, repo_root: Path) -> dict[str, Any]:
         remove_stale_paths_for_packager_fn=_remove_stale_paths_for_packager,
         promote_staged_output_for_packager_fn=_promote_staged_output_for_packager,
         promotion_receipt_path_fn=_promotion_receipt_path_impl,
+        verify_source_projection_fn=_verify_source_projection,
+        load_json_bytes_fn=_load_json_bytes,
+        hash_bytes_fn=_hash_bytes,
     )
 
 

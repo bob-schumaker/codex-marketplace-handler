@@ -304,6 +304,7 @@ def parse_invocation(
         source_manifest=payload.get("source_manifest"),
         generated=payload.get("generated"),
         router_authority=payload.get("router_authority"),
+        source_projection_receipt=payload.get("source_projection_receipt"),
     )
     validate_relative_path(repo_root, invocation.repository_root, "repository_root")
     validate_relative_path(repo_root, invocation.output_root, "output_root")
