@@ -58,7 +58,7 @@ assembly calls must not become an implicit multi-plugin API.
 `marketplace-installer` owns generic mechanics. Its v3 public modules are:
 
 ```python
-from marketplace_installer.router_plugin_packager import PackagerError, run
+from marketplace_installer.router_plugin_packager import PackagerError, main, run
 from marketplace_installer.marketplace_publish import (
     MarketplacePublishError,
     assemble_generated_plugin,
@@ -72,6 +72,8 @@ The required operations are:
 
 ```python
 run("apply", invocation_path: Path, repo_root: Path) -> dict[str, Any]
+
+main(argv: list[str] | None = None) -> int
 
 assemble_generated_plugin(
     *,
@@ -132,11 +134,22 @@ The migration is a separate, behavior-preserving work item. It does not change
 invocation formats, generated output, receipt schemas, CLI arguments, or the
 public result/error contract. It must proceed in this order:
 
+The implementation adds `tests/fixtures/toolchain-entrypoint-matrix.json` with
+`format_version: 1`. Its `entries` object is keyed exactly to both manifests'
+`dependency_closures` keys. Each entry declares projected argv, wheel console
+command and argv, fixture, expected stdout kind (`json` or `text`), success
+projection, and expected failure exit code/stderr projection. The test rejects
+unknown or missing keys. The projected toolchain is a package directory rooted
+at `marketplace_installer`; scripts use package imports in that layout, not
+flat sibling imports.
+
 1. Add a migration inventory for every currently consumed non-public facade
    symbol, including helpers, constants, types, and errors. For each, record
    its consumers, owning module, exact non-underscored replacement name and
    signature, and characterization test. These replacement names are internal
    package APIs for shipped scripts, not new third-party compatibility seams.
+   They must be declared in their owning module's `__all__` and not re-exported
+   from `marketplace_installer.__init__`.
 2. Add the replacement names to the owning modules without changing the
    facade; update one shipped-script or test consumer at a time.
 3. Keep the source-checkout toolchain closure complete after each consumer
@@ -148,15 +161,21 @@ public result/error contract. It must proceed in this order:
    public seam only after all forwarding helpers are gone.
 
 Acceptance requires an integration test that projects the toolchain and invokes
-every manifest entrypoint, plus an installed-entrypoint smoke or equivalent.
+every declared matrix entrypoint, then invokes every entrypoint from an
+isolated wheel-installed environment. Subprocesses run outside the checkout
+with sanitized `PYTHONPATH` and prove imports resolve under the projected tree
+or wheel site-packages.
 For each script, projected and installed runs must agree on exit status and the
-documented JSON/error payload for one success and one expected failure. Both
-toolchain manifests must validate and have identical normalized inventories and
-digests; the test must detect a newly direct dependency missing from either
-manifest. No shipped script or test may import, reference, or dynamically
-access an underscored `router_plugin_packager` symbol, and a negative export
-check must prove the facade has no forwarding aliases outside its documented
-`PackagerError`, `run`, and `main` seam. The full packager, first-user-flow,
+documented JSON/error payload for one success and one expected failure. The
+test must detect a newly direct dependency missing from either manifest. No
+shipped script or test may import, reference, or dynamically
+access an underscored `router_plugin_packager` symbol. The facade declares
+`__all__ == {"PackagerError", "run", "main"}`. Its AST check permits only
+the `PackagerError` error-module import and local `run`/`main` definitions as
+public bindings; it rejects every other facade-level wrapper, assignment, or
+import alias that exposes an owning-module operation. Private imports used only
+inside orchestration remain permitted. Both manifests must be byte-identical;
+their SHA-256 over UTF-8 bytes is the parity digest. The full packager, first-user-flow,
 setup, and MCP customer-flow test suites must pass.
 
 `run("apply", ...)` returns an absolute `output_root` path to the validated
