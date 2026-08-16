@@ -29,6 +29,7 @@ def execute_packager_command_for_packager(
     remove_stale_paths_for_packager_fn: Any,
     promote_staged_output_for_packager_fn: Any,
     promotion_receipt_path_fn: Any,
+    source_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     recover_interrupted_promotion_for_packager_fn(
         request.output_root,
@@ -46,6 +47,8 @@ def execute_packager_command_for_packager(
         load_json_fn=load_json_fn,
         validate_existing_destination_fn=validate_existing_destination_fn,
     )
+    if source_projection is not None:
+        summary["source_projection"] = source_projection
     if command == "apply":
         apply_generated_output_for_packager_fn(
             request,
@@ -101,9 +104,18 @@ def run_packager_with_deps(
     remove_stale_paths_for_packager_fn: Any,
     promote_staged_output_for_packager_fn: Any,
     promotion_receipt_path_fn: Any,
+    verify_source_projection_fn: Any,
+    load_json_bytes_fn: Any,
+    hash_bytes_fn: Any,
 ) -> dict[str, Any]:
     resolved_repo_root = repo_root.resolve()
     invocation = parse_invocation_fn(invocation_path.resolve(), resolved_repo_root)
+    source_projection = verify_source_projection_fn(
+        invocation.source_projection_receipt,
+        invocation.repository_root,
+        load_json_bytes_fn=load_json_bytes_fn,
+        hash_bytes_fn=hash_bytes_fn,
+    )
     request = normalize_request_fn(invocation, resolved_repo_root)
     return execute_packager_command_for_packager_fn(
         command,
@@ -128,6 +140,7 @@ def run_packager_with_deps(
         remove_stale_paths_for_packager_fn=remove_stale_paths_for_packager_fn,
         promote_staged_output_for_packager_fn=promote_staged_output_for_packager_fn,
         promotion_receipt_path_fn=promotion_receipt_path_fn,
+        source_projection=source_projection,
     )
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -1893,6 +1894,340 @@ def test_plan_and_apply_report_same_scope_for_identical_inputs(tmp_path: Path) -
     assert planned["preserved_paths"] == applied["preserved_paths"] == []
     assert planned["bootstrap_state_path"] == applied["bootstrap_state_path"]
     assert planned["decision_state_path"] == applied["decision_state_path"]
+    assert "source_projection" not in planned
+    assert "source_projection" not in applied
+
+
+def test_source_projection_receipt_is_verified_on_plan_and_apply(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    receipt_path = _projection_receipt(repo, [_projection_entry(repo)])
+    invocation = _projection_invocation(repo)
+
+    planned = packager.run("plan", invocation, repo)
+    applied = packager.run("apply", invocation, repo)
+
+    assert (
+        planned["source_projection"]
+        == applied["source_projection"]
+        == {
+            "receipt_digest": f"sha256:{hashlib.sha256(receipt_path.read_bytes()).hexdigest()}",
+            "verified_entry_count": 1,
+        }
+    )
+
+
+def _projection_invocation(repo: Path) -> Path:
+    invocation = repo / "projection.json"
+    _write_json(
+        invocation,
+        {
+            "format_version": 1,
+            "input_mode": "repo_bootstrap",
+            "repository_root": ".",
+            "output_root": "generated/ponytail",
+            "source_projection_receipt": ".router-plugin-source/.router-source-projection.json",
+        },
+    )
+    return invocation
+
+
+def _projection_receipt(repo: Path, entries: list[dict]) -> Path:
+    path = repo / ".router-plugin-source" / ".router-source-projection.json"
+    _write_json(
+        path,
+        {
+            "format": "router-source-projection-v1",
+            "canonical_root": ".",
+            "projection_root": ".router-plugin-source",
+            "entries": entries,
+        },
+    )
+    return path
+
+
+def _projection_entry(repo: Path) -> dict:
+    canonical = repo / "canonical" / "support.md"
+    projected = repo / ".router-plugin-source" / "canonical" / "support.md"
+    canonical.parent.mkdir(parents=True)
+    projected.parent.mkdir(parents=True)
+    canonical.write_text("canonical support\n", encoding="utf-8")
+    projected.write_bytes(canonical.read_bytes())
+    return {
+        "canonical_path": "canonical/support.md",
+        "projected_path": "canonical/support.md",
+        "sha256": f"sha256:{hashlib.sha256(canonical.read_bytes()).hexdigest()}",
+    }
+
+
+def _native_projection_invocation(repo: Path) -> Path:
+    invocation = repo / "native-projection.json"
+    _write_json(
+        invocation,
+        {
+            "format_version": 2,
+            "surface_mode": "native_routed",
+            "repository_root": ".",
+            "source_manifest": "plugins/caveman/.codex-plugin/plugin.json",
+            "source_projection_receipt": ".router-plugin-source/.router-source-projection.json",
+            "output_root": "generated/caveman-routed",
+            "generated": {"name": "caveman-routed", "surface_id": "caveman-routed"},
+            "router_authority": {
+                "routers": [
+                    {
+                        "name": "caveman",
+                        "description": "Use caveman mode.",
+                        "members": [
+                            "plugins/caveman/skills/alpha",
+                            "plugins/caveman/skills/beta",
+                        ],
+                    }
+                ]
+            },
+        },
+    )
+    return invocation
+
+
+def test_source_projection_receipt_is_verified_for_native_routed_plan_and_apply(
+    tmp_path: Path,
+) -> None:
+    repo = _native_plugin_repo(tmp_path)
+    receipt = _projection_receipt(repo, [_projection_entry(repo)])
+
+    planned = packager.run("plan", _native_projection_invocation(repo), repo)
+    applied = packager.run("apply", _native_projection_invocation(repo), repo)
+
+    expected = {
+        "receipt_digest": f"sha256:{hashlib.sha256(receipt.read_bytes()).hexdigest()}",
+        "verified_entry_count": 1,
+    }
+    assert planned["source_projection"] == expected
+    assert applied["source_projection"] == expected
+
+
+def test_source_projection_receipt_with_invalid_utf8_is_invalid(tmp_path: Path) -> None:
+    repo = _native_plugin_repo(tmp_path)
+    receipt = _projection_receipt(repo, [_projection_entry(repo)])
+    receipt.write_bytes(b"\xff")
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _native_projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_receipt_invalid"
+
+
+def test_source_projection_stale_canonical_fails_before_apply_mutates_output(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    _projection_receipt(repo, [entry])
+    invocation = _projection_invocation(repo)
+    output = repo / "generated" / "ponytail"
+    output.mkdir(parents=True)
+    sentinel = output / "keep.txt"
+    sentinel.write_text("unchanged\n", encoding="utf-8")
+    (repo / "canonical" / "support.md").write_text("changed\n", encoding="utf-8")
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", invocation, repo)
+
+    assert excinfo.value.error_code == "source_projection_stale"
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("apply", invocation, repo)
+
+    assert excinfo.value.error_code == "source_projection_stale"
+    assert sentinel.read_text(encoding="utf-8") == "unchanged\n"
+
+
+@pytest.mark.parametrize("change", ["missing", "modified"])
+def test_source_projection_stale_projected_file_fails_closed(
+    tmp_path: Path, change: str
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    _projection_receipt(repo, [entry])
+    projected = repo / ".router-plugin-source" / "canonical" / "support.md"
+    if change == "missing":
+        projected.unlink()
+    else:
+        projected.write_text("changed\n", encoding="utf-8")
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_stale"
+    output = repo / "generated" / "ponytail"
+    output.mkdir(parents=True)
+    sentinel = output / "keep.txt"
+    sentinel.write_text("unchanged\n", encoding="utf-8")
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("apply", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_stale"
+    assert sentinel.read_text(encoding="utf-8") == "unchanged\n"
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_error"),
+    [
+        ("traversal", "source_projection_path_unsafe"),
+        ("duplicate", "source_projection_receipt_invalid"),
+        ("unsorted", "source_projection_receipt_invalid"),
+        ("bad_hash", "source_projection_receipt_invalid"),
+    ],
+)
+def test_source_projection_rejects_invalid_receipt_entries(
+    tmp_path: Path, mutate: str, expected_error: str
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    entries = [entry]
+    if mutate == "traversal":
+        entry["canonical_path"] = "../support.md"
+    elif mutate == "duplicate":
+        entries.append(dict(entry))
+    elif mutate == "unsorted":
+        later = dict(entry)
+        later["canonical_path"] = "z/support.md"
+        later["projected_path"] = "z/support.md"
+        (repo / "z").mkdir()
+        (repo / "z" / "support.md").write_text("canonical support\n", encoding="utf-8")
+        (repo / ".router-plugin-source" / "z").mkdir()
+        (repo / ".router-plugin-source" / "z" / "support.md").write_text(
+            "canonical support\n", encoding="utf-8"
+        )
+        entries = [later, entry]
+    else:
+        entry["sha256"] = "sha256:not-a-valid-digest"
+    _projection_receipt(repo, entries)
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == expected_error
+
+
+def test_source_projection_rejects_missing_or_symlinked_receipt(tmp_path: Path) -> None:
+    repo = _ponytail_repo(tmp_path)
+    invocation = _projection_invocation(repo)
+
+    with pytest.raises(packager.PackagerError) as missing:
+        packager.run("plan", invocation, repo)
+    assert missing.value.error_code == "source_projection_receipt_missing"
+
+    target = repo / "receipt-target.json"
+    _projection_receipt(repo, [_projection_entry(repo)])
+    receipt = repo / ".router-plugin-source" / ".router-source-projection.json"
+    receipt.replace(target)
+    receipt.symlink_to(target)
+    with pytest.raises(packager.PackagerError) as symlinked:
+        packager.run("plan", invocation, repo)
+    assert symlinked.value.error_code == "source_projection_path_unsafe"
+
+
+def test_source_projection_rejects_traversal_in_receipt_reference(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    invocation = _projection_invocation(repo)
+    payload = _load_json(invocation)
+    payload["source_projection_receipt"] = "../receipt.json"
+    _write_json(invocation, payload)
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", invocation, repo)
+
+    assert excinfo.value.error_code == "source_projection_path_unsafe"
+
+
+def test_source_projection_rejects_backslash_in_receipt_reference(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    invocation = _projection_invocation(repo)
+    payload = _load_json(invocation)
+    payload["source_projection_receipt"] = ".router-plugin-source\\receipt.json"
+    _write_json(invocation, payload)
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", invocation, repo)
+
+    assert excinfo.value.error_code == "source_projection_path_unsafe"
+
+
+@pytest.mark.parametrize("entry_field", ["canonical_path", "projected_path"])
+def test_source_projection_rejects_symlinked_entry_file(
+    tmp_path: Path, entry_field: str
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    _projection_receipt(repo, [entry])
+    target = repo / "target.md"
+    target.write_text("canonical support\n", encoding="utf-8")
+    root = repo if entry_field == "canonical_path" else repo / ".router-plugin-source"
+    entry_file = root / entry[entry_field]
+    entry_file.unlink()
+    entry_file.symlink_to(target)
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_path_unsafe"
+
+
+def test_source_projection_rejects_non_directory_root_with_stable_error(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    (repo / "root-file").write_text("not a directory\n", encoding="utf-8")
+    receipt = _projection_receipt(repo, [entry])
+    payload = _load_json(receipt)
+    payload["canonical_root"] = "root-file"
+    _write_json(receipt, payload)
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_path_unsafe"
+
+
+def test_source_projection_rejects_non_directory_entry_component(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    (repo / "entry-file").write_text("not a directory\n", encoding="utf-8")
+    entry["canonical_path"] = "entry-file/support.md"
+    _projection_receipt(repo, [entry])
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_path_unsafe"
+
+
+def test_source_projection_rejects_duplicate_receipt_keys(tmp_path: Path) -> None:
+    repo = _ponytail_repo(tmp_path)
+    entry = _projection_entry(repo)
+    receipt = _projection_receipt(repo, [entry])
+    receipt.write_text(
+        '{"format":"wrong","format":"router-source-projection-v1",'
+        '"canonical_root":".","projection_root":".router-plugin-source",'
+        + '"entries":['
+        + json.dumps(entry)
+        + "]}",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(packager.PackagerError) as excinfo:
+        packager.run("plan", _projection_invocation(repo), repo)
+
+    assert excinfo.value.error_code == "source_projection_receipt_invalid"
 
 
 def test_repeated_skill_list_runs_reuse_bootstrap_state_and_keep_surface_records(
