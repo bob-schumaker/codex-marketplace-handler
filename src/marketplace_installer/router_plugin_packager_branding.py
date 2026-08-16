@@ -3,6 +3,28 @@ from __future__ import annotations
 from typing import Any
 
 from marketplace_installer.router_plugin_packager_errors import PackagerError
+from marketplace_installer.router_plugin_packager_parsing import has_hidden_path_segment
+from marketplace_installer.router_plugin_packager_text import normalize_slug
+
+
+BRANDING_SLOT_CANDIDATES = {
+    "logo": ("logo", "icon"),
+    "dark_logo": ("dark-logo", "dark_logo", "logo-dark", "darklogo"),
+    "composer_icon": ("composer-icon", "composer_icon", "composericon", "icon"),
+}
+
+__all__ = ["discover_default_branding_assets"]
+
+
+def discover_default_branding_assets(
+    repository_root: Any,
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    return discover_branding_assets(
+        repository_root,
+        branding_slot_candidates=BRANDING_SLOT_CANDIDATES,
+        has_hidden_path_segment=has_hidden_path_segment,
+        normalize_slug=normalize_slug,
+    )
 
 
 def discover_branding_assets(

@@ -1,0 +1,77 @@
+{
+  "entries": {
+    "launcher": {
+      "fixture": "help",
+      "failure_argv": ["router-packager", "--unknown-option"],
+      "failure_exit_code": 2,
+      "failure_stderr_contains": "error:",
+      "projected_argv": ["router-packager", "--help"],
+      "projected_module": "marketplace_installer.codex_packaging_toolchain_launcher",
+      "success_stdout_contains": "usage:",
+      "stdout_kind": "text",
+      "wheel_argv": ["router-packager", "--help"],
+      "wheel_command": "codex-packaging-toolchain"
+    },
+    "mcp-customer-flow": {
+      "fixture": "help",
+      "failure_argv": ["--unknown-option"],
+      "failure_exit_code": 2,
+      "failure_stderr_contains": "error:",
+      "projected_argv": ["--help"],
+      "projected_module": "marketplace_installer.mcp_plugin_packaging_customer_flow",
+      "success_stdout_contains": "usage:",
+      "stdout_kind": "text",
+      "wheel_argv": ["--help"],
+      "wheel_command": "mcp-plugin-packaging-customer-flow"
+    },
+    "mcp-setup": {
+      "fixture": "help",
+      "failure_argv": ["--unknown-option"],
+      "failure_exit_code": 2,
+      "failure_stderr_contains": "error:",
+      "projected_argv": ["--help"],
+      "projected_module": "marketplace_installer.router_plugin_packager_setup",
+      "success_stdout_contains": "usage:",
+      "stdout_kind": "text",
+      "wheel_argv": ["--help"],
+      "wheel_command": "router-plugin-packager-setup"
+    },
+    "router-first-user-flow": {
+      "fixture": "help",
+      "failure_argv": ["--unknown-option"],
+      "failure_exit_code": 2,
+      "failure_stderr_contains": "error:",
+      "projected_argv": ["--help"],
+      "projected_module": "marketplace_installer.router_plugin_first_user_flow",
+      "success_stdout_contains": "usage:",
+      "stdout_kind": "text",
+      "wheel_argv": ["--help"],
+      "wheel_command": "router-plugin-first-user-flow"
+    },
+    "router-packager": {
+      "fixture": "help",
+      "failure_argv": ["--unknown-option"],
+      "failure_exit_code": 2,
+      "failure_stderr_contains": "error:",
+      "projected_argv": ["--help"],
+      "projected_module": "marketplace_installer.router_plugin_packager",
+      "success_stdout_contains": "usage:",
+      "stdout_kind": "text",
+      "wheel_argv": ["--help"],
+      "wheel_command": "router-plugin-packager"
+    },
+    "runtime-lifecycle": {
+      "fixture": "help",
+      "failure_argv": ["--unknown-option"],
+      "failure_exit_code": 2,
+      "failure_stderr_contains": "error:",
+      "projected_argv": ["--help"],
+      "projected_module": "marketplace_installer.plugin_runtime_lifecycle",
+      "success_stdout_contains": "usage:",
+      "stdout_kind": "text",
+      "wheel_argv": ["--help"],
+      "wheel_command": "plugin-runtime-lifecycle"
+    }
+  },
+  "format_version": 1
+}

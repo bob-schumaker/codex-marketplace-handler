@@ -16,6 +16,11 @@ from packaging.specifiers import SpecifierSet
 from marketplace_installer import marketplace_publish
 
 
+ENTRYPOINT_MATRIX = (
+    Path(__file__).parent / "fixtures" / "toolchain-entrypoint-matrix.json"
+)
+
+
 def run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> str:
     completed = subprocess.run(
         command,
@@ -254,6 +259,31 @@ def test_library_and_rendered_product_wheels_are_isolated(tmp_path: Path) -> Non
         env=clean_environment,
     ).splitlines()
     assert all("site-packages" in location for location in locations)
+    matrix = json.loads(ENTRYPOINT_MATRIX.read_text(encoding="utf-8"))
+    for name, entry in matrix["entries"].items():
+        completed = subprocess.run(
+            [str(binaries / entry["wheel_command"]), *entry["wheel_argv"]],
+            cwd=work_directory,
+            env=clean_environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, (name, completed.stderr)
+        assert entry["success_stdout_contains"] in completed.stdout
+        failed = subprocess.run(
+            [str(binaries / entry["wheel_command"]), *entry["failure_argv"]],
+            cwd=work_directory,
+            env=clean_environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert failed.returncode == entry["failure_exit_code"], (
+            name,
+            failed.stderr,
+        )
+        assert entry["failure_stderr_contains"] in failed.stderr
     output = run(
         [str(binaries / "marketplace-publisher"), "--json"],
         cwd=work_directory,

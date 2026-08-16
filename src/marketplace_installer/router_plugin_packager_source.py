@@ -4,7 +4,22 @@ import os
 from pathlib import Path
 from typing import Any
 
+from marketplace_installer.router_plugin_packager_constants import DECISION_STATE_DIR
 from marketplace_installer.router_plugin_packager_errors import PackagerError
+from marketplace_installer.router_plugin_packager_parsing import (
+    has_hidden_path_segment,
+    load_json,
+)
+from marketplace_installer.router_plugin_packager_receipts import (
+    validate_existing_destination,
+)
+
+
+__all__ = [
+    "discover_source_root",
+    "discover_visible_skill_paths",
+    "load_default_bootstrap_state",
+]
 
 
 def discover_visible_skill_paths(source_root: Path) -> list[Path]:
@@ -30,9 +45,7 @@ def discover_visible_skill_paths(source_root: Path) -> list[Path]:
     return discovered
 
 
-def discover_source_root(
-    repository_root: Path, *, has_hidden_path_segment: Any
-) -> tuple[Path, str]:
+def discover_source_root(repository_root: Path) -> tuple[Path, str]:
     candidate_roots = {
         path.parent.parent.resolve()
         for path in repository_root.rglob("SKILL.md")
@@ -228,3 +241,17 @@ def load_bootstrap_state(
     if payload.get("format_version") != 1:
         return None
     return payload
+
+
+def load_default_bootstrap_state(repository_root: Path) -> dict[str, Any] | None:
+    """Load the standard router-packager bootstrap state when present."""
+    return load_bootstrap_state(
+        repository_root,
+        bootstrap_state_path_fn=lambda root: bootstrap_state_path(
+            root,
+            decision_state_dir=DECISION_STATE_DIR,
+            bootstrap_state_name="bootstrap-state.json",
+        ),
+        validate_existing_destination=validate_existing_destination,
+        load_json=load_json,
+    )

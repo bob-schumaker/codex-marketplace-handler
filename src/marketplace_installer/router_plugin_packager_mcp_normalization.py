@@ -1,11 +1,39 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from packaging.version import InvalidVersion, Version
 
 from marketplace_installer.router_plugin_packager_errors import PackagerError
+from marketplace_installer.router_plugin_packager_hashing import canonical_json_bytes
+from marketplace_installer.router_plugin_packager_parsing import ensure_string
+
+
+__all__ = [
+    "McpLaunchContract",
+    "normalize_mcp_environment",
+    "normalize_mcp_launch_contract",
+]
+
+
+@dataclass(frozen=True)
+class McpLaunchContract:
+    schema_version: int
+    input_schema_version: int
+    server_id: str
+    transport: str
+    command: str
+    python_version: str
+    package_index: str
+    package_name: str
+    package_version: str
+    entrypoint: str
+    extra_args: tuple[str, ...]
+    forbidden_arg_fragments: tuple[str, ...]
+    environment: tuple[tuple[str, str], ...]
+    environment_authority: str
 
 
 _DISTRIBUTION_NAME_RE = re.compile(r"[A-Za-z0-9]+(?:[-_.]+[A-Za-z0-9]+)*")
@@ -187,12 +215,16 @@ def normalize_mcp_packaging(
 def normalize_mcp_launch_contract(  # noqa: C901
     payload: dict[str, Any],
     *,
-    ensure_string: Any,
-    require_string_list_fn: Any,
-    normalize_mcp_environment_fn: Any,
-    validate_mcp_launch_policy_fn: Any,
-    mcp_launch_contract_factory: Any,
+    ensure_string: Any = ensure_string,
+    require_string_list_fn: Any = require_string_list,
+    normalize_mcp_environment_fn: Any | None = None,
+    validate_mcp_launch_policy_fn: Any | None = None,
+    mcp_launch_contract_factory: Any = McpLaunchContract,
 ) -> Any:
+    if normalize_mcp_environment_fn is None:
+        normalize_mcp_environment_fn = normalize_mcp_environment
+    if validate_mcp_launch_policy_fn is None:
+        validate_mcp_launch_policy_fn = validate_mcp_launch_policy
     schema_version = payload.get("schema_version")
     allowed_v1 = {
         "schema_version",
@@ -347,7 +379,7 @@ def normalize_mcp_launch_contract(  # noqa: C901
 
 
 def normalize_mcp_environment(
-    value: Any, *, field: str, canonical_json_bytes: Any
+    value: Any, *, field: str, canonical_json_bytes: Any = canonical_json_bytes
 ) -> tuple[tuple[str, str], ...]:
     if not isinstance(value, dict):
         raise PackagerError(

@@ -6,6 +6,9 @@ from pathlib import Path
 
 from marketplace_installer import router_plugin_packager as packager
 from marketplace_installer import router_plugin_packager_setup as setup_helper
+from marketplace_installer.router_plugin_packager_constants import (
+    REQUIRED_MARKER_PREFIX,
+)
 
 
 def _load_json(path: Path) -> dict:
@@ -112,7 +115,7 @@ def test_scaffold_reports_ambiguous_branding_as_incomplete(tmp_path: Path) -> No
 
     assert report["status"] == "incomplete"
     assert invocation["branding_asset_overrides"]["logo"].startswith(
-        packager.REQUIRED_MARKER_PREFIX
+        REQUIRED_MARKER_PREFIX
     )
     assert report["unresolved_placeholders"] == [
         {
@@ -184,10 +187,10 @@ def test_mcp_scaffold_creates_durable_registry_root_without_plugin_artifact(
 
     assert config["registry_root"] == "router-plugin-registry"
     assert config["plugin_kind"] == "mcp_based"
-    assert config["surface_mode"].startswith(packager.REQUIRED_MARKER_PREFIX)
+    assert config["surface_mode"].startswith(REQUIRED_MARKER_PREFIX)
     assert "generator" not in config
     assert scaffold_report["state"] == "scaffolded"
-    assert scaffold_report["required_marker_prefix"] == packager.REQUIRED_MARKER_PREFIX
+    assert scaffold_report["required_marker_prefix"] == REQUIRED_MARKER_PREFIX
     assert {
         "manifest.json",
         "release-manifest.json",

@@ -12,7 +12,7 @@ from marketplace_installer.marketplace_publish import (
     assemble_generated_plugin,
     stage_marketplace_payload,
 )
-from marketplace_installer.router_plugin_packager import PackagerError, parse_invocation, run
+from marketplace_installer.router_plugin_packager import PackagerError, run
 
 
 def _resolve_repository_input(value: str) -> Path:
@@ -40,13 +40,10 @@ def build_marketplace(
         raise MarketplacePublishError(
             f"assembly root remains from a failed build: {assembly_root}; inspect and remove it"
         )
-    invocation = parse_invocation(invocation_path, repository_root)
-    if invocation.repository_root != repository_root:
-        raise MarketplacePublishError("invocation repository root does not match --repository-root")
-    if repository_root not in invocation.output_root.parents:
-        raise MarketplacePublishError("invocation output root is outside --repository-root")
     applied = run("apply", invocation_path, repository_root)
-    plugin_root = Path(applied["output_root"])
+    plugin_root = Path(applied["output_root"]).resolve()
+    if repository_root not in plugin_root.parents:
+        raise MarketplacePublishError("generated plugin root is outside --repository-root")
     assembled = assemble_generated_plugin(
         plugin_root=plugin_root,
         assembly_root=assembly_root,

@@ -9,6 +9,20 @@ import pytest
 
 from marketplace_installer import marketplace_publish as publish_lib
 from marketplace_installer import router_plugin_packager as packager
+from marketplace_installer import router_plugin_packager_engine as packager_engine
+from marketplace_installer.router_plugin_packager_constants import RECEIPT_NAME
+from marketplace_installer.router_plugin_packager_hashing import (
+    canonical_json_bytes,
+    hash_bytes,
+    hash_tree,
+)
+from marketplace_installer.router_plugin_packager_mcp import (
+    validate_mcp_descriptor_round_trip,
+)
+from marketplace_installer.router_plugin_packager_mcp_normalization import (
+    normalize_mcp_launch_contract,
+)
+from marketplace_installer.router_plugin_packager_parsing import load_json
 
 LIVE_WERNER_ROOT = Path("../werner-mcp-tools").resolve()
 LIVE_OCI_PLUGIN_ROOT = LIVE_WERNER_ROOT / "oci-worktools"
@@ -83,7 +97,7 @@ def test_mcp_launch_contract_schema_is_machine_readable() -> None:
 
 
 def test_mcp_launch_contract_normalizes_v1_to_empty_v2_environment() -> None:
-    contract = packager._normalize_mcp_launch_contract(
+    contract = normalize_mcp_launch_contract(
         _mcp_packaging_contract(
             interface=FIXTURE_INTERFACE,
             required_byte_preserved_paths=[],
@@ -117,7 +131,7 @@ def test_mcp_launch_contract_v2_emits_environment_and_receipt_proof(
     applied = packager.run("apply", repo / "mcp.json", repo)
     output_root = Path(applied["output_root"])
     descriptor = _load_json(output_root / ".mcp.json")
-    receipt = _load_json(output_root / packager.RECEIPT_NAME)
+    receipt = _load_json(output_root / RECEIPT_NAME)
     proof = receipt["normalized_request"]["mcp_packaging"]
 
     assert descriptor["mcpServers"][FIXTURE_SERVER_ID]["env"] == {
@@ -128,15 +142,15 @@ def test_mcp_launch_contract_v2_emits_environment_and_receipt_proof(
     assert proof["launch_contract"]["resolved_schema_version"] == 2
     assert proof["launch_contract"]["environment_authority"] == "config"
     assert "package_version" not in proof["launch_contract"]
-    assert proof["mcp_descriptor_bytes_sha256"] == packager._hash_bytes(
+    assert proof["mcp_descriptor_bytes_sha256"] == hash_bytes(
         (output_root / ".mcp.json").read_bytes()
     )
-    assert proof["mcp_descriptor_canonical_sha256"] == packager._hash_bytes(
-        packager._canonical_json_bytes(descriptor)
+    assert proof["mcp_descriptor_canonical_sha256"] == hash_bytes(
+        canonical_json_bytes(descriptor)
     )
 
     staging_plan = _load_json(output_root / ".codex-plugin" / "staging-plan.json")
-    installed = packager.validate_staged_marketplace_install(
+    installed = packager_engine.validate_staged_marketplace_install(
         output_root,
         staging_plan,
         repo / "staging-sandbox",
@@ -145,9 +159,7 @@ def test_mcp_launch_contract_v2_emits_environment_and_receipt_proof(
     cache_root = Path(installed["cache_plugin_root"])
     assert _load_json(cache_root / ".mcp.json") == descriptor
     assert (
-        _load_json(cache_root / packager.RECEIPT_NAME)["normalized_request"][
-            "mcp_packaging"
-        ]
+        _load_json(cache_root / RECEIPT_NAME)["normalized_request"]["mcp_packaging"]
         == proof
     )
 
@@ -175,7 +187,7 @@ def test_mcp_launch_contract_v3_renders_package_selector_and_provenance(
     applied = packager.run("apply", repo / "mcp.json", repo)
     output_root = Path(applied["output_root"])
     descriptor = _load_json(output_root / ".mcp.json")
-    proof = _load_json(output_root / packager.RECEIPT_NAME)["normalized_request"][
+    proof = _load_json(output_root / RECEIPT_NAME)["normalized_request"][
         "mcp_packaging"
     ]["launch_contract"]
 
@@ -206,7 +218,7 @@ def test_mcp_launch_contract_v3_rejects_noncanonical_package_versions(
     )
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager._normalize_mcp_launch_contract(launch_contract)
+        normalize_mcp_launch_contract(launch_contract)
 
     assert exc_info.value.error_code == "invalid_mcp_launch_contract"
 
@@ -233,7 +245,7 @@ def test_mcp_launch_contract_v3_rejects_non_distribution_package_name(
     )
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager._normalize_mcp_launch_contract(launch_contract)
+        normalize_mcp_launch_contract(launch_contract)
 
     assert exc_info.value.error_code == "invalid_mcp_launch_contract"
 
@@ -249,7 +261,7 @@ def test_mcp_launch_contract_rejects_non_integer_or_unsupported_schema_version(
     launch_contract["schema_version"] = schema_version
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager._normalize_mcp_launch_contract(launch_contract)
+        normalize_mcp_launch_contract(launch_contract)
 
     assert exc_info.value.error_code == "invalid_mcp_launch_contract"
 
@@ -273,7 +285,7 @@ def test_mcp_launch_contract_rejects_invalid_environment(
     launch_contract.update({"schema_version": 2, "environment": environment})
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager._normalize_mcp_launch_contract(launch_contract)
+        normalize_mcp_launch_contract(launch_contract)
 
     assert exc_info.value.error_code == error_code
 
@@ -286,7 +298,7 @@ def test_mcp_launch_contract_v2_requires_environment() -> None:
     launch_contract["schema_version"] = 2
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager._normalize_mcp_launch_contract(launch_contract)
+        normalize_mcp_launch_contract(launch_contract)
 
     assert exc_info.value.error_code == "invalid_mcp_launch_contract"
 
@@ -327,7 +339,7 @@ def test_invalid_staged_environment_fails_before_staging_or_cache_creation(
     sandbox_root = repo / "sandbox"
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager.apply_staging_plan_for_validation(
+        packager_engine.apply_staging_plan_for_validation(
             output_root, staging_plan, staged_root, "environment-proof"
         )
 
@@ -335,7 +347,7 @@ def test_invalid_staged_environment_fails_before_staging_or_cache_creation(
     assert not staged_root.exists()
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager.validate_staged_marketplace_install(
+        packager_engine.validate_staged_marketplace_install(
             output_root, staging_plan, sandbox_root, "environment-proof"
         )
 
@@ -350,7 +362,7 @@ def test_packager_rejects_duplicate_invocation_keys(tmp_path: Path) -> None:
     )
 
     with pytest.raises(packager.PackagerError) as exc_info:
-        packager._load_json(invocation)
+        load_json(invocation)
 
     assert exc_info.value.error_code == "invalid_json_duplicate_key"
 
@@ -554,7 +566,7 @@ def _write_registry_provenance(
             source.with_name(f"{source.stem}.provenance.json"),
             {
                 "artifact_path": f"{registry_root}/{relative}",
-                "source_digest": packager._hash_bytes(source.read_bytes()),
+                "source_digest": hash_bytes(source.read_bytes()),
                 "generator_identity": generator_identity,
                 "generator_version": "0.1.0"
                 if generator_identity == "werner-registry"
@@ -573,7 +585,7 @@ def _write_registry_provenance(
         registry_path / "schemas.provenance.json",
         {
             "artifact_path": f"{registry_root}/schemas",
-            "source_digest": packager._hash_tree(schemas),
+            "source_digest": hash_tree(schemas),
             "generator_identity": generator_identity,
             "generator_version": "0.1.0"
             if generator_identity == "werner-registry"
@@ -950,7 +962,7 @@ def test_mcp_staging_plan_preserves_required_files(tmp_path: Path) -> None:
     staging_plan = _load_json(output_root / ".codex-plugin" / "staging-plan.json")
     staged_root = repo / "staged" / FIXTURE_PLUGIN_SLUG
 
-    summary = packager.apply_staging_plan_for_validation(
+    summary = packager_engine.apply_staging_plan_for_validation(
         output_root, staging_plan, staged_root, "runtime-validation"
     )
 
@@ -982,16 +994,12 @@ def test_mcp_packager_emits_governed_publication_metadata(tmp_path: Path) -> Non
     assert receipt["mcp_authority"] == {
         "format": "router-plugin-mcp-authority-v1",
         "config_path": "router-plugin-config.json",
-        "config_digest": packager._hash_bytes(
-            (repo / "router-plugin-config.json").read_bytes()
-        ),
+        "config_digest": hash_bytes((repo / "router-plugin-config.json").read_bytes()),
         "registry_root": CANONICAL_GENERATED_REGISTRY_ROOT,
-        "registry_digest": packager._hash_tree(
-            repo / CANONICAL_GENERATED_REGISTRY_ROOT
-        ),
-        "toolchain_manifest_digest": packager._hash_bytes(
+        "registry_digest": hash_tree(repo / CANONICAL_GENERATED_REGISTRY_ROOT),
+        "toolchain_manifest_digest": hash_bytes(
             (
-                Path(packager.__file__).parent
+                Path(packager_engine.__file__).parent
                 / "codex-packaging-toolchain-manifest.json"
             ).read_bytes()
         ),
@@ -1018,7 +1026,7 @@ def test_mcp_staging_harness_validates_disposable_marketplace_install(
     output_root = Path(applied["output_root"])
     staging_plan = _load_json(output_root / ".codex-plugin" / "staging-plan.json")
 
-    result = packager.validate_staged_marketplace_install(
+    result = packager_engine.validate_staged_marketplace_install(
         output_root,
         staging_plan,
         repo / "staging-sandbox",
@@ -1045,7 +1053,7 @@ def test_mcp_staging_plan_rejects_disallowed_mutation_transform(tmp_path: Path) 
     staging_plan["allowed_mutations"][0]["transform"] = "rewrite-version"
 
     with pytest.raises(packager.PackagerError) as excinfo:
-        packager.apply_staging_plan_for_validation(
+        packager_engine.apply_staging_plan_for_validation(
             output_root,
             staging_plan,
             repo / "staged" / f"{FIXTURE_PLUGIN_SLUG}-invalid",
@@ -1059,20 +1067,14 @@ def test_mcp_descriptor_round_trip_rejects_invalid_shape(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     repo = _mcp_fixture_repo(tmp_path)
-    request = packager._normalize_request(
-        packager.parse_invocation(repo / "mcp.json", repo.resolve()), repo.resolve()
-    )
-    assert request.mcp_packaging is not None
-
-    monkeypatch.setattr(
-        packager,
-        "_mcp_descriptor_payload",
-        lambda _contract: {"mcpServers": {}},
+    invocation = _load_json(repo / "mcp.json")
+    contract = normalize_mcp_launch_contract(
+        invocation["mcp_packaging"]["launch_contract"]
     )
 
     with pytest.raises(packager.PackagerError) as excinfo:
-        packager._validate_mcp_descriptor_round_trip(
-            request.mcp_packaging.launch_contract
+        validate_mcp_descriptor_round_trip(
+            contract, mcp_descriptor_payload_fn=lambda _contract: {"mcpServers": {}}
         )
 
     assert excinfo.value.error_code == "invalid_mcp_descriptor_round_trip"
@@ -1144,7 +1146,7 @@ def test_mcp_output_tree_publishes_directly_without_marketplace_wrapper(
     repo = _mcp_fixture_repo(tmp_path)
     applied = packager.run("apply", repo / "mcp.json", repo)
     output_root = Path(applied["output_root"])
-    before = packager._hash_tree(output_root)
+    before = hash_tree(output_root)
 
     target_root = repo / "target-marketplace"
     preview = publish_lib.publish_generated_plugin(
@@ -1162,7 +1164,7 @@ def test_mcp_output_tree_publishes_directly_without_marketplace_wrapper(
 
     assert result["source_shape"] == "generated-plugin-tree"
     assert result["source_plugins"] == [FIXTURE_PLUGIN_SLUG]
-    assert packager._hash_tree(output_root) == before
+    assert hash_tree(output_root) == before
     copied_root = target_root / "plugins" / FIXTURE_PLUGIN_SLUG
     assert _load_json(copied_root / ".codex-plugin" / "plugin.json") == _load_json(
         output_root / ".codex-plugin" / "plugin.json"
@@ -1188,11 +1190,11 @@ def test_branded_skills_only_output_publishes_directly(tmp_path: Path) -> None:
     repo = _branded_skills_only_fixture_repo(tmp_path)
     applied = packager.run("apply", repo / "skills-only.json", repo)
     output_root = Path(applied["output_root"])
-    before = packager._hash_tree(output_root)
+    before = hash_tree(output_root)
 
     metadata = _load_json(output_root / ".codex-plugin" / "publication-metadata.json")
     manifest = _load_json(output_root / ".codex-plugin" / "plugin.json")
-    receipt = _load_json(output_root / packager.RECEIPT_NAME)
+    receipt = _load_json(output_root / RECEIPT_NAME)
     assert metadata["plugin_slug"] == manifest["name"]
     assert ".codex-plugin/publication-metadata.json" in receipt["generated_paths"]
 
@@ -1211,7 +1213,7 @@ def test_branded_skills_only_output_publishes_directly(tmp_path: Path) -> None:
     )
 
     assert result["source_plugins"] == ["branded-skills-only"]
-    assert packager._hash_tree(output_root) == before
+    assert hash_tree(output_root) == before
     copied_root = target_root / "plugins" / "branded-skills-only"
     copied_manifest = _load_json(copied_root / ".codex-plugin" / "plugin.json")
     assert copied_manifest == manifest

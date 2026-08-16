@@ -4,12 +4,22 @@ import json
 import hashlib
 import shutil
 import subprocess
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
 
 
 from marketplace_installer import router_plugin_packager as packager
+from marketplace_installer import router_plugin_packager_engine as packager_engine
+from marketplace_installer.router_plugin_packager_hashing import hash_bytes
+from marketplace_installer.router_plugin_packager_outputs import (
+    router_skill_content,
+    semantic_router_frontmatter_description,
+)
+from marketplace_installer.router_plugin_packager_parsing import (
+    parse_markdown_frontmatter,
+)
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "router_plugin_packager"
 CONTRACT = FIXTURES / "any-repo-contract"
@@ -325,7 +335,7 @@ def _payload_repo(tmp_path: Path) -> Path:
     (template / "config.txt.tmpl").write_text(
         "name={{name}}\nmode={{mode}}\n", encoding="utf-8"
     )
-    digest = packager._hash_bytes(pregenerated.read_bytes())
+    digest = hash_bytes(pregenerated.read_bytes())
     _write_json(
         generated / "registry.provenance.json",
         {
@@ -383,7 +393,7 @@ def test_v1_invocation_is_upgraded_in_memory_without_rewriting_source(
     }
     _write_json(invocation_path, payload)
 
-    invocation = packager.parse_invocation(invocation_path, tmp_path)
+    invocation = packager_engine.parse_invocation(invocation_path, tmp_path)
 
     assert invocation.format_version == 2
     assert invocation.source_format_version == 1
@@ -419,7 +429,7 @@ def test_v2_native_routed_invocation_requires_router_authority_contract(
         },
     )
 
-    invocation = packager.parse_invocation(invocation_path, tmp_path)
+    invocation = packager_engine.parse_invocation(invocation_path, tmp_path)
 
     assert invocation.format_version == 2
     assert invocation.source_format_version == 2
@@ -459,7 +469,7 @@ def test_v2_native_routed_rejects_legacy_input_mode(tmp_path: Path) -> None:
     )
 
     with pytest.raises(packager.PackagerError) as excinfo:
-        packager.parse_invocation(invocation_path, tmp_path)
+        packager_engine.parse_invocation(invocation_path, tmp_path)
 
     assert excinfo.value.error_code == "native_routed_rejects_legacy_input_mode"
 
@@ -1092,7 +1102,7 @@ def test_native_routed_plan_recovers_valid_backup_from_interrupted_promotion(
     )
     backup = output_root.parent / ".caveman-routed.backup-interrupted"
     stage = output_root.parent / ".caveman-routed.stage-interrupted"
-    packager.os.replace(output_root, backup)
+    packager_engine.os.replace(output_root, backup)
     receipt_path = (
         output_root.parent / ".caveman-routed.router-plugin-packager-promotion.json"
     )
@@ -1156,7 +1166,7 @@ def test_native_routed_rejects_interrupted_recovery_without_valid_backup_receipt
     output_root = Path(first["output_root"])
     backup = output_root.parent / ".caveman-routed.backup-interrupted"
     stage = output_root.parent / ".caveman-routed.stage-interrupted"
-    packager.os.replace(output_root, backup)
+    packager_engine.os.replace(output_root, backup)
     (backup / ".router-plugin-packager-source-map.json").unlink()
     receipt_path = (
         output_root.parent / ".caveman-routed.router-plugin-packager-promotion.json"
@@ -1452,7 +1462,7 @@ def test_contract_readme_describes_exactly_two_bootstrap_versions() -> None:
 def test_semantic_router_frontmatter_description_prefers_member_trigger_language() -> (
     None
 ):
-    router = packager.Router(
+    router = SimpleNamespace(
         router_slug="ponytail",
         description="Route ponytail workflows.",
         member_skill_ids=["ponytail"],
@@ -1468,7 +1478,7 @@ def test_semantic_router_frontmatter_description_prefers_member_trigger_language
         }
     ]
 
-    description = packager._semantic_router_frontmatter_description(router, modules)
+    description = semantic_router_frontmatter_description(router, modules)
 
     assert description.startswith("Use Ponytail mode for this task.")
     assert "Trigger: lazy senior developer mode." in description
@@ -1476,7 +1486,7 @@ def test_semantic_router_frontmatter_description_prefers_member_trigger_language
 
 
 def test_semantic_router_frontmatter_description_mentions_multiple_domains() -> None:
-    router = packager.Router(
+    router = SimpleNamespace(
         router_slug="ponytail-suite",
         description="Route ponytail-suite workflows.",
         member_skill_ids=["ponytail-audit", "ponytail-help"],
@@ -1494,7 +1504,7 @@ def test_semantic_router_frontmatter_description_mentions_multiple_domains() -> 
         },
     ]
 
-    description = packager._semantic_router_frontmatter_description(router, modules)
+    description = semantic_router_frontmatter_description(router, modules)
 
     assert "Whole-repo audit for over-engineering" in description
     assert "Quick-reference card for all ponytail modes" in description
@@ -1695,7 +1705,7 @@ def test_skill_list_apply_writes_router_pattern_plugin(tmp_path: Path) -> None:
     applied = packager.run("apply", invocation, repo)
     output_root = Path(applied["output_root"])
     manifest = _load_json(output_root / ".codex-plugin" / "plugin.json")
-    router_frontmatter = packager._parse_markdown_frontmatter(
+    router_frontmatter = parse_markdown_frontmatter(
         output_root / "skills" / "obsidian-memory" / "SKILL.md"
     )
 
@@ -2684,13 +2694,13 @@ def test_catalog_mode_apply_writes_declared_router_surface(tmp_path: Path) -> No
 
 
 def test_router_skill_content_adds_workflow_router_follow_up_guidance() -> None:
-    router = packager.Router(
+    router = SimpleNamespace(
         router_slug="workflow-router",
         description="Route workflow ownership requests.",
         member_skill_ids=["workflow-router"],
     )
 
-    rendered = packager._router_skill_content(
+    rendered = router_skill_content(
         router,
         [{"slug": "workflow-router", "description": "Route workflow ownership."}],
         "Route workflow ownership requests.",
@@ -2729,12 +2739,12 @@ def test_router_skill_content_adds_router_specific_non_entrypoint_guidance() -> 
     }
 
     for slug, (description, modules, needle) in scenarios.items():
-        router = packager.Router(
+        router = SimpleNamespace(
             router_slug=slug,
             description=description,
             member_skill_ids=[slug],
         )
-        rendered = packager._router_skill_content(router, modules, description)
+        rendered = router_skill_content(router, modules, description)
         assert needle in rendered
 
 
@@ -3517,14 +3527,14 @@ def test_apply_restores_valid_output_when_promotion_fails(
     original_receipt = (
         output_root / ".router-plugin-packager-source-map.json"
     ).read_bytes()
-    original_replace = packager.os.replace
+    original_replace = packager_engine.os.replace
 
     def fail_stage_promotion(source: str | Path, destination: str | Path) -> None:
         if ".stage-" in Path(source).name and Path(destination) == output_root:
             raise OSError("injected stage promotion failure")
         original_replace(source, destination)
 
-    monkeypatch.setattr(packager.os, "replace", fail_stage_promotion)
+    monkeypatch.setattr(packager_engine.os, "replace", fail_stage_promotion)
     with pytest.raises(packager.PackagerError) as excinfo:
         packager.run("apply", repo / "invocation.json", repo)
 
@@ -3546,7 +3556,7 @@ def test_plan_recovers_valid_backup_from_interrupted_promotion(tmp_path: Path) -
     output_root = Path(first["output_root"])
     backup = output_root.parent / ".plugin.backup-interrupted"
     stage = output_root.parent / ".plugin.stage-interrupted"
-    packager.os.replace(output_root, backup)
+    packager_engine.os.replace(output_root, backup)
     receipt_path = output_root.parent / ".plugin.router-plugin-packager-promotion.json"
     receipt_path.write_text(
         json.dumps(

@@ -3,6 +3,9 @@ from __future__ import annotations
 import re
 
 
+__all__ = ["display_name_from_slug", "normalize_slug", "normalize_whitespace"]
+
+
 def normalize_slug(value: str) -> str:
     normalized = value.strip().lower().replace("_", "-")
     normalized = re.sub(r"[^a-z0-9-]+", "-", normalized)

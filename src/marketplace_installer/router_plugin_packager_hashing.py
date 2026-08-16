@@ -8,6 +8,9 @@ from typing import Any
 from marketplace_installer.router_plugin_packager_errors import PackagerError
 
 
+__all__ = ["canonical_json_bytes", "hash_bytes", "hash_tree"]
+
+
 def hash_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
