@@ -990,10 +990,10 @@ def test_mcp_packager_emits_governed_publication_metadata(tmp_path: Path) -> Non
             repo / CANONICAL_GENERATED_REGISTRY_ROOT
         ),
         "toolchain_manifest_digest": packager._hash_bytes(
-                (
-                    Path(packager.__file__).parent
-                    / "codex-packaging-toolchain-manifest.json"
-                ).read_bytes()
+            (
+                Path(packager.__file__).parent
+                / "codex-packaging-toolchain-manifest.json"
+            ).read_bytes()
         ),
     }
 

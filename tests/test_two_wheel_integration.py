@@ -230,7 +230,9 @@ def test_library_and_rendered_product_wheels_are_isolated(tmp_path: Path) -> Non
         for item in install_report_payload["install"]
         if item["metadata"]["name"] == "marketplace-installer"
     )
-    assert installed_library["metadata"]["version"] == root_project["project"]["version"]
+    assert (
+        installed_library["metadata"]["version"] == root_project["project"]["version"]
+    )
     assert installed_library["download_info"]["archive_info"]["hash"] == (
         f"sha256={library_digest}"
     )
