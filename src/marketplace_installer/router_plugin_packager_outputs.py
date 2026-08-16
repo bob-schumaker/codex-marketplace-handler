@@ -7,6 +7,17 @@ from pathlib import Path
 from typing import Any
 
 from marketplace_installer.router_plugin_packager_errors import PackagerError
+from marketplace_installer.router_plugin_packager_text import (
+    collect_semantic_summaries,
+    collect_trigger_phrases,
+    join_human_list,
+    normalize_whitespace,
+    strip_terminal_punctuation,
+    truncate_sentence,
+)
+
+
+__all__ = ["router_skill_content", "semantic_router_frontmatter_description"]
 
 
 @dataclass
@@ -158,12 +169,12 @@ def semantic_router_frontmatter_description(
     router: Any,
     modules: list[dict[str, str]],
     *,
-    normalize_whitespace: Any,
-    collect_semantic_summaries: Any,
-    collect_trigger_phrases: Any,
-    join_human_list: Any,
-    strip_terminal_punctuation: Any,
-    truncate_sentence: Any,
+    normalize_whitespace: Any = normalize_whitespace,
+    collect_semantic_summaries: Any = collect_semantic_summaries,
+    collect_trigger_phrases: Any = collect_trigger_phrases,
+    join_human_list: Any = join_human_list,
+    strip_terminal_punctuation: Any = strip_terminal_punctuation,
+    truncate_sentence: Any = truncate_sentence,
 ) -> str:
     module_descriptions = [
         normalize_whitespace(str(module["description"]))

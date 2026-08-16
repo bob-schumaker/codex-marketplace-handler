@@ -7,6 +7,16 @@ from typing import Any
 from marketplace_installer.router_plugin_packager_errors import PackagerError
 
 
+__all__ = [
+    "collect_required_placeholders",
+    "has_hidden_path_segment",
+    "load_json",
+    "load_yaml",
+    "parse_markdown_frontmatter",
+    "validate_relative_path",
+]
+
+
 def has_hidden_path_segment(path: Path) -> bool:
     return any(part.startswith(".") for part in path.parts)
 

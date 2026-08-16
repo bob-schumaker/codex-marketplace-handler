@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import os
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -33,11 +32,6 @@ def test_build_script_uses_explicit_repository_inputs_from_foreign_cwd(
     script = load_build_script(publisher)
     received: dict[str, object] = {}
 
-    monkeypatch.setattr(
-        script,
-        "parse_invocation",
-        lambda path, root: SimpleNamespace(repository_root=root, output_root=generated),
-    )
     monkeypatch.setattr(
         script,
         "run",

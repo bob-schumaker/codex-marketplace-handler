@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import re
 import subprocess
@@ -17,22 +16,36 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-PACKAGER_SCRIPT = Path(__file__).resolve().parent / "router_plugin_packager.py"
-PACKAGER_SPEC = importlib.util.spec_from_file_location(
-    "router_plugin_packager", PACKAGER_SCRIPT
+from marketplace_installer.router_plugin_packager_parsing import validate_relative_path
+from marketplace_installer.router_plugin_packager_branding import (
+    discover_default_branding_assets,
 )
-assert PACKAGER_SPEC is not None
-assert PACKAGER_SPEC.loader is not None
-packager = importlib.util.module_from_spec(PACKAGER_SPEC)
-sys.modules[PACKAGER_SPEC.name] = packager
-PACKAGER_SPEC.loader.exec_module(packager)
+from marketplace_installer.router_plugin_packager_constants import (
+    DECISION_STATE_DIR,
+    PUBLICATION_METADATA_NAME,
+    RECEIPT_NAME,
+)
+from marketplace_installer.router_plugin_packager_source import (
+    discover_source_root,
+    discover_visible_skill_paths,
+)
+from marketplace_installer.router_plugin_packager_text import normalize_slug
+
+try:
+    from marketplace_installer.router_plugin_packager_script_loading import (
+        load_sibling_module,
+    )
+except ModuleNotFoundError:
+    from router_plugin_packager_script_loading import load_sibling_module
+
+
+packager = load_sibling_module("router_plugin_packager.py")
 
 
 REQUEST_SCHEMA = "router-plugin-request/v1"
 RECEIPT_SCHEMA = "router-plugin-receipt/v1"
-REQUESTS_DIR = packager.DECISION_STATE_DIR / "requests"
-RECEIPTS_DIR = packager.DECISION_STATE_DIR / "receipts"
+REQUESTS_DIR = DECISION_STATE_DIR / "requests"
+RECEIPTS_DIR = DECISION_STATE_DIR / "receipts"
 SEMVER_TAG = re.compile(r"^refs/tags/(v?)([0-9]+)\.([0-9]+)\.([0-9]+)$")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -87,7 +100,7 @@ def _valid_branding_asset(path: Path) -> bool:
 def _load_manifest(repo_root: Path, relative_path: str) -> tuple[dict[str, Any], Path]:
     path = (repo_root / relative_path).resolve()
     try:
-        packager._validate_relative_path(repo_root, path, "canonical_manifest")
+        validate_relative_path(repo_root, path, "canonical_manifest")
     except packager.PackagerError as exc:
         raise FirstUserFlowError(exc.error_code, exc.message, exc.details) from exc
     if not path.is_file():
@@ -269,8 +282,8 @@ def classify(repo_root: Path) -> dict[str, Any]:
 
     repo_root = repo_root.resolve()
     try:
-        source_root, source_root_text = packager._discover_source_root(repo_root)
-        skills = packager._discover_visible_skill_paths(source_root)
+        source_root, source_root_text = discover_source_root(repo_root)
+        skills = discover_visible_skill_paths(source_root)
     except packager.PackagerError as exc:
         return {
             "command": "classify",
@@ -289,7 +302,7 @@ def classify(repo_root: Path) -> dict[str, Any]:
 
 
 def _branding(repo_root: Path) -> dict[str, str]:
-    discovered, rejected = packager._discover_branding_assets(repo_root)
+    discovered, rejected = discover_default_branding_assets(repo_root)
     if rejected:
         raise FirstUserFlowError(
             "ambiguous_branding_asset",
@@ -343,7 +356,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _load_receipt(repo_root: Path, surface_id: str) -> tuple[dict[str, Any], Path]:
-    path = repo_root / packager.DECISION_STATE_DIR / f"{surface_id}.json"
+    path = repo_root / DECISION_STATE_DIR / f"{surface_id}.json"
     if not path.is_file():
         raise FirstUserFlowError(
             "missing_bootstrap_receipt",
@@ -402,7 +415,7 @@ def _branding_readiness(output_root: Path) -> dict[str, Any]:
     """Validate publication metadata and the three generated branding assets."""
 
     manifest_path = output_root / ".codex-plugin" / "plugin.json"
-    metadata_path = output_root / packager.PUBLICATION_METADATA_NAME
+    metadata_path = output_root / PUBLICATION_METADATA_NAME
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -435,7 +448,7 @@ def _branding_readiness(output_root: Path) -> dict[str, Any]:
         or metadata.get("category") != "Productivity"
         or not isinstance(metadata.get("plugin_slug"), str)
     ):
-        missing.append(packager.PUBLICATION_METADATA_NAME)
+        missing.append(PUBLICATION_METADATA_NAME)
     return {
         "publication_ready": not missing,
         "missing_or_invalid": sorted(set(missing)),
@@ -484,7 +497,7 @@ def bootstrap(
 
     candidate = classification["candidate"]
     manifest, manifest_path = _load_manifest(repo_root, canonical_manifest)
-    plugin_slug = packager._normalize_slug(_required_string(manifest, "name"))
+    plugin_slug = normalize_slug(_required_string(manifest, "name"))
     if not plugin_slug:
         raise FirstUserFlowError(
             "invalid_manifest_evidence",
@@ -496,7 +509,7 @@ def bootstrap(
     version = release["version"] if release else manifest_version
     publication = _publication(manifest)
     branding = _branding(repo_root)
-    output_root = (packager.DECISION_STATE_DIR / "generated" / plugin_slug).as_posix()
+    output_root = (DECISION_STATE_DIR / "generated" / plugin_slug).as_posix()
     request_output_root = (Path("..") / "generated" / plugin_slug).as_posix()
     request = {
         "schema": REQUEST_SCHEMA,
@@ -521,7 +534,7 @@ def bootstrap(
     }
     request_sha256 = _sha256_bytes(_canonical_bytes(request))
     request_path = repo_root / REQUESTS_DIR / f"{plugin_slug}-{request_sha256}.json"
-    receipt_path = repo_root / packager.DECISION_STATE_DIR / f"{plugin_slug}.json"
+    receipt_path = repo_root / DECISION_STATE_DIR / f"{plugin_slug}.json"
     if receipt_path.exists():
         existing = json.loads(receipt_path.read_text(encoding="utf-8"))
         existing_output = existing.get("output_root")
@@ -634,7 +647,7 @@ def package(repo_root: Path, *, surface_id: str) -> dict[str, Any]:
     receipt["state"] = "packaged"
     receipt["output_digests"] = _output_digests(output_root)
     receipt["generated_receipt_path"] = str(
-        (output_root / packager.RECEIPT_NAME).relative_to(repo_root)
+        (output_root / RECEIPT_NAME).relative_to(repo_root)
     )
     receipt["branding_readiness"] = _branding_readiness(output_root)
     _write_json(receipt_path, receipt)

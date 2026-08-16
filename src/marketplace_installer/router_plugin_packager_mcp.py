@@ -5,6 +5,12 @@ from typing import Any
 from marketplace_installer.router_plugin_packager_errors import PackagerError
 
 
+__all__ = [
+    "mcp_launch_contract_invocation_payload",
+    "validate_mcp_descriptor_round_trip",
+]
+
+
 def mcp_descriptor_payload(contract: Any) -> dict[str, Any]:
     package_selector = contract.package_name
     if contract.schema_version == 3 and contract.package_version:

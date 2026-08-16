@@ -12,7 +12,6 @@ import hashlib
 import importlib.util
 import json
 import os
-import sys
 import tempfile
 import tomllib
 from dataclasses import dataclass
@@ -22,17 +21,34 @@ from typing import Any
 from marketplace_installer.router_plugin_packager_mcp import (
     mcp_launch_contract_invocation_payload,
 )
-
-
-PACKAGER_SCRIPT = Path(__file__).resolve().parent / "router_plugin_packager.py"
-PACKAGER_SPEC = importlib.util.spec_from_file_location(
-    "router_plugin_packager", PACKAGER_SCRIPT
+from marketplace_installer.router_plugin_packager_mcp_normalization import (
+    McpLaunchContract,
+    normalize_mcp_environment,
+    normalize_mcp_launch_contract,
 )
-assert PACKAGER_SPEC is not None
-assert PACKAGER_SPEC.loader is not None
-router_packager = importlib.util.module_from_spec(PACKAGER_SPEC)
-sys.modules[PACKAGER_SPEC.name] = router_packager
-PACKAGER_SPEC.loader.exec_module(router_packager)
+from marketplace_installer.router_plugin_packager_hashing import hash_tree
+from marketplace_installer.router_plugin_packager_parsing import (
+    collect_required_placeholders,
+)
+from marketplace_installer.router_plugin_packager_constants import (
+    RECEIPT_NAME,
+    REQUIRED_MARKER_PREFIX,
+)
+from marketplace_installer.router_plugin_packager_text import (
+    display_name_from_slug,
+    normalize_slug,
+    normalize_whitespace,
+)
+
+try:
+    from marketplace_installer.router_plugin_packager_script_loading import (
+        load_sibling_module,
+    )
+except ModuleNotFoundError:
+    from router_plugin_packager_script_loading import load_sibling_module
+
+
+router_packager = load_sibling_module("router_plugin_packager.py")
 
 PackagerError = router_packager.PackagerError
 
@@ -197,8 +213,8 @@ def _load_mcp_setup_json(path: Path, artifact_id: str) -> dict[str, Any]:
 def _ensure_marker_free(payload: dict[str, Any], artifact_id: str, path: Path) -> None:
     placeholders = [
         placeholder
-        for placeholder in router_packager._collect_required_placeholders(
-            payload, required_marker_prefix=router_packager.REQUIRED_MARKER_PREFIX
+        for placeholder in collect_required_placeholders(
+            payload, required_marker_prefix=REQUIRED_MARKER_PREFIX
         )
         if placeholder["field"] != "required_marker_prefix"
     ]
@@ -376,11 +392,11 @@ def _load_toml(path: Path) -> dict[str, Any]:
 
 
 def _normalize_slug(value: str) -> str:
-    return router_packager._normalize_slug(value)
+    return normalize_slug(value)
 
 
 def _display_name_from_slug(value: str) -> str:
-    return router_packager._display_name_from_slug(value)
+    return display_name_from_slug(value)
 
 
 def _hash_bytes(content: bytes) -> str:
@@ -393,7 +409,7 @@ def _hash_file(path: Path) -> str:
 
 def _hash_path(path: Path) -> str:
     if path.is_dir():
-        return router_packager._hash_tree(path)
+        return hash_tree(path)
     return _hash_file(path)
 
 
@@ -559,7 +575,7 @@ def _find_candidate_plugins(repo_root: Path) -> list[CandidatePlugin]:
         plugin_root = plugin_json_path.parent.parent
         if _is_wrapper_owned_path(repo_root, plugin_root):
             continue
-        if (plugin_root / router_packager.RECEIPT_NAME).is_file():
+        if (plugin_root / RECEIPT_NAME).is_file():
             continue
         mcp_path = plugin_root / ".mcp.json"
         skills_root = plugin_root / "skills"
@@ -1021,7 +1037,7 @@ def _parse_launch_contract(mcp_json: dict[str, Any]) -> dict[str, Any]:  # noqa:
     extra_args = args[from_index + 3 : stdio_index]
     environment_present = "env" in descriptor
     try:
-        environment = router_packager._normalize_mcp_environment(
+        environment = normalize_mcp_environment(
             descriptor.get("env", {}), field="mcpServers.env"
         )
     except router_packager.PackagerError as exc:
@@ -1112,7 +1128,7 @@ def _config_launch_contract(
             {},
         )
     try:
-        environment = router_packager._normalize_mcp_environment(
+        environment = normalize_mcp_environment(
             launch_contract["environment"],
             field="mcp_packaging.launch_contract.environment",
         )
@@ -1132,7 +1148,7 @@ def _config_launch_environment(config: dict[str, Any]) -> dict[str, str] | None:
 
 def _pending_config_launch_contract_migration(
     config: dict[str, Any],
-    contract: router_packager.McpLaunchContract,
+    contract: McpLaunchContract,
 ) -> dict[str, Any] | None:
     """Describe the one-time client-config upgrade without mutating it."""
 
@@ -1167,7 +1183,7 @@ def _pending_config_launch_contract_migration(
 
 
 def _derive_skill_release_contract(skill_id: str, skill_text: str) -> dict[str, Any]:
-    normalized_skill_text = router_packager._normalize_whitespace(skill_text).casefold()
+    normalized_skill_text = normalize_whitespace(skill_text).casefold()
     required_phrases: list[str] = []
     missing_options: list[tuple[str, ...]] = []
     for options in REQUIRED_PHRASE_OPTIONS:
@@ -1175,8 +1191,7 @@ def _derive_skill_release_contract(skill_id: str, skill_text: str) -> dict[str, 
             (
                 phrase
                 for phrase in options
-                if router_packager._normalize_whitespace(phrase).casefold()
-                in normalized_skill_text
+                if normalize_whitespace(phrase).casefold() in normalized_skill_text
             ),
             None,
         )
@@ -1440,7 +1455,7 @@ def _derive_invocation(  # noqa: C901
         resolved_launch_contract["schema_version"] = 2
         resolved_launch_contract["environment_authority"] = "config"
     try:
-        normalized_launch_contract = router_packager._normalize_mcp_launch_contract(
+        normalized_launch_contract = normalize_mcp_launch_contract(
             payload["mcp_packaging"]["launch_contract"]
         )
     except router_packager.PackagerError as exc:

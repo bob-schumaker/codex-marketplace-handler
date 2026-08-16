@@ -10,6 +10,9 @@ import pytest
 
 from marketplace_installer import mcp_plugin_packaging_customer_flow as customer_flow
 from marketplace_installer import router_plugin_packager_setup as setup_helper
+from marketplace_installer.router_plugin_packager_constants import (
+    REQUIRED_MARKER_PREFIX,
+)
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -71,7 +74,7 @@ def _write_completed_setup_contract(repo: Path, registry_root: Path) -> None:
         {
             "format_version": 1,
             "state": "complete",
-            "required_marker_prefix": customer_flow.router_packager.REQUIRED_MARKER_PREFIX,
+            "required_marker_prefix": REQUIRED_MARKER_PREFIX,
             "registry_root": registry_relpath,
         },
     )
@@ -530,9 +533,7 @@ def test_setup_helper_scaffolds_incomplete_mcp_draft_when_registry_evidence_is_m
     assert invocation["output_root"] == (
         "./.codex-plugin/router-plugin-packager/generated/oci-worktools"
     )
-    assert invocation["mcp_packaging"].startswith(
-        customer_flow.router_packager.REQUIRED_MARKER_PREFIX
-    )
+    assert invocation["mcp_packaging"].startswith(REQUIRED_MARKER_PREFIX)
     unresolved_fields = {item["field"] for item in report["unresolved_placeholders"]}
     assert "plugin_kind" not in unresolved_fields
     assert "mcp_packaging" in unresolved_fields

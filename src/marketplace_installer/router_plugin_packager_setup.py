@@ -8,34 +8,41 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
+try:
+    from marketplace_installer.router_plugin_packager_script_loading import (
+        load_sibling_module,
+    )
+except ModuleNotFoundError:
+    from router_plugin_packager_script_loading import load_sibling_module
 
-PACKAGER_SCRIPT = Path(__file__).resolve().parent / "router_plugin_packager.py"
-PACKAGER_SPEC = importlib.util.spec_from_file_location(
-    "router_plugin_packager", PACKAGER_SCRIPT
+from marketplace_installer.router_plugin_packager_branding import (
+    discover_default_branding_assets,
 )
-assert PACKAGER_SPEC is not None
-assert PACKAGER_SPEC.loader is not None
-router_packager = importlib.util.module_from_spec(PACKAGER_SPEC)
-sys.modules[PACKAGER_SPEC.name] = router_packager
-PACKAGER_SPEC.loader.exec_module(router_packager)
+from marketplace_installer.router_plugin_packager_constants import (
+    REQUIRED_MARKER_PREFIX,
+)
+from marketplace_installer.router_plugin_packager_parsing import (
+    collect_required_placeholders,
+    load_yaml,
+    validate_relative_path,
+)
+from marketplace_installer.router_plugin_packager_source import (
+    discover_source_root,
+    discover_visible_skill_paths,
+    load_default_bootstrap_state,
+)
+from marketplace_installer.router_plugin_packager_text import (
+    display_name_from_slug,
+    normalize_slug,
+)
 
-CUSTOMER_FLOW_SCRIPT = (
-    Path(__file__).resolve().parent / "mcp_plugin_packaging_customer_flow.py"
-)
-CUSTOMER_FLOW_SPEC = importlib.util.spec_from_file_location(
-    "mcp_plugin_packaging_customer_flow", CUSTOMER_FLOW_SCRIPT
-)
-assert CUSTOMER_FLOW_SPEC is not None
-assert CUSTOMER_FLOW_SPEC.loader is not None
-customer_flow = importlib.util.module_from_spec(CUSTOMER_FLOW_SPEC)
-sys.modules[CUSTOMER_FLOW_SPEC.name] = customer_flow
-CUSTOMER_FLOW_SPEC.loader.exec_module(customer_flow)
+
+router_packager = load_sibling_module("router_plugin_packager.py")
+customer_flow = load_sibling_module("mcp_plugin_packaging_customer_flow.py")
 
 PackagerError = router_packager.PackagerError
 
@@ -209,7 +216,7 @@ def _build_mcp_helper_artifacts(
 def _scaffold_mcp_registry_root(repo_root: Path) -> None:
     """Create durable, explicitly incomplete MCP inputs for a clean repository."""
 
-    marker = router_packager.REQUIRED_MARKER_PREFIX
+    marker = REQUIRED_MARKER_PREFIX
     _write_json_if_missing(
         repo_root / MCP_CONFIG_PATH,
         {
@@ -293,8 +300,8 @@ def _build_analysis_request(
 ) -> dict[str, Any]:
     unresolved_fields = [
         item["field"]
-        for item in router_packager._collect_required_placeholders(
-            invocation, required_marker_prefix=router_packager.REQUIRED_MARKER_PREFIX
+        for item in collect_required_placeholders(
+            invocation, required_marker_prefix=REQUIRED_MARKER_PREFIX
         )
     ]
     return {
@@ -423,8 +430,8 @@ def _mcp_review_notes(
     ]
     if selected.get("registry_root"):
         inferred_lines.append(f"- `registry_root`: `{selected['registry_root']}`")
-    unresolved_placeholders = router_packager._collect_required_placeholders(
-        payload, required_marker_prefix=router_packager.REQUIRED_MARKER_PREFIX
+    unresolved_placeholders = collect_required_placeholders(
+        payload, required_marker_prefix=REQUIRED_MARKER_PREFIX
     )
     unresolved_lines = [
         f"- `{entry['field']}`: `{entry['value']}`" for entry in unresolved_placeholders
@@ -472,10 +479,10 @@ def _generated_mcp_skill_display_name(
     if (
         isinstance(display_name, str)
         and display_name
-        and not display_name.startswith(router_packager.REQUIRED_MARKER_PREFIX)
+        and not display_name.startswith(REQUIRED_MARKER_PREFIX)
     ):
         return display_name
-    return router_packager._display_name_from_slug(plugin_slug)
+    return display_name_from_slug(plugin_slug)
 
 
 def _ensure_generated_mcp_guidance_skill(
@@ -513,26 +520,24 @@ def _build_scaffold_payloads(
     version: str | None = None,
     analyze: bool = False,
 ) -> tuple[dict[str, Any], str]:
-    source_root, source_root_text = router_packager._discover_source_root(repo_root)
-    skill_roots = router_packager._discover_visible_skill_paths(source_root)
+    source_root, source_root_text = discover_source_root(repo_root)
+    skill_roots = discover_visible_skill_paths(source_root)
     skill_paths = [_relative_text(repo_root, path) for path in skill_roots]
-    bootstrap_state = router_packager._load_bootstrap_state(repo_root)
-    repo_slug = router_packager._normalize_slug(repo_root.name)
+    bootstrap_state = load_default_bootstrap_state(repo_root)
+    repo_slug = normalize_slug(repo_root.name)
     if not repo_slug:
         raise SetupError(
             "invalid_repo_name",
             "repository name does not normalize to a non-empty plugin slug",
             {"repository_root": str(repo_root)},
         )
-    resolved_display_name = display_name or router_packager._display_name_from_slug(
-        repo_slug
-    )
+    resolved_display_name = display_name or display_name_from_slug(repo_slug)
     publisher_slug = None
     if bootstrap_state:
         raw = bootstrap_state.get("publisher_slug")
         if isinstance(raw, str) and raw.strip():
-            publisher_slug = router_packager._normalize_slug(raw)
-    discovered_branding, ambiguous_branding = router_packager._discover_branding_assets(
+            publisher_slug = normalize_slug(raw)
+    discovered_branding, ambiguous_branding = discover_default_branding_assets(
         repo_root
     )
     invocation: dict[str, Any] = {
@@ -553,7 +558,7 @@ def _build_scaffold_payloads(
     branding_overrides = dict(discovered_branding)
     for slot, candidates in sorted(ambiguous_branding.items()):
         branding_overrides[slot] = (
-            f"{router_packager.REQUIRED_MARKER_PREFIX} choose branding winner for"
+            f"{REQUIRED_MARKER_PREFIX} choose branding winner for"
             f" {slot} from {', '.join(candidates)}"
         )
     if branding_overrides:
@@ -592,16 +597,14 @@ def _fallback_mcp_invocation(
     display_name: str | None = None,
     version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    repo_slug = router_packager._normalize_slug(repo_root.name) or "plugin"
+    repo_slug = normalize_slug(repo_root.name) or "plugin"
     source_root_text: str | None = None
     skill_paths: list[str] = []
     derived_display_name: str | None = None
     try:
-        source_root, discovered_source_root_text = (
-            router_packager._discover_source_root(repo_root)
-        )
+        source_root, discovered_source_root_text = discover_source_root(repo_root)
         source_root_text = discovered_source_root_text
-        skill_roots = router_packager._discover_visible_skill_paths(source_root)
+        skill_roots = discover_visible_skill_paths(source_root)
         if skill_roots:
             skill_paths = [_relative_text(repo_root, path) for path in skill_roots]
         if len(skill_roots) == 1:
@@ -617,8 +620,8 @@ def _fallback_mcp_invocation(
         or f"__REQUIRED__: choose plugin display name for {repo_slug}"
     )
     resolved_slug = (
-        router_packager._normalize_slug(resolved_display_name)
-        if not resolved_display_name.startswith(router_packager.REQUIRED_MARKER_PREFIX)
+        normalize_slug(resolved_display_name)
+        if not resolved_display_name.startswith(REQUIRED_MARKER_PREFIX)
         else repo_slug
     ) or repo_slug
     if source_root_text is None or not skill_paths:
@@ -728,7 +731,7 @@ def _collect_report_from_manifest(repo_root: Path) -> dict[str, Any]:
         required = bool(artifact.get("required"))
         consumed_by_packaging = bool(artifact.get("consumed_by_packaging"))
         artifact_path = (repo_root / relative_path).resolve()
-        router_packager._validate_relative_path(repo_root, artifact_path, artifact_id)
+        validate_relative_path(repo_root, artifact_path, artifact_id)
         exists = artifact_path.exists()
         checked_artifacts.append(
             {
@@ -750,16 +753,16 @@ def _collect_report_from_manifest(repo_root: Path) -> dict[str, Any]:
         if format_name == "json":
             parsed_payload = _load_json(artifact_path)
         elif format_name == "yaml":
-            parsed_payload = router_packager._load_yaml(artifact_path)
+            parsed_payload = load_yaml(artifact_path)
         else:
             raise SetupError(
                 "unsupported_setup_artifact_format",
                 "consumed setup artifacts must be json or yaml",
                 {"artifact_id": artifact_id, "format": format_name},
             )
-        for placeholder in router_packager._collect_required_placeholders(
+        for placeholder in collect_required_placeholders(
             parsed_payload,
-            required_marker_prefix=router_packager.REQUIRED_MARKER_PREFIX,
+            required_marker_prefix=REQUIRED_MARKER_PREFIX,
         ):
             if placeholder["field"] == "required_marker_prefix":
                 continue
@@ -779,7 +782,7 @@ def _collect_report_from_manifest(repo_root: Path) -> dict[str, Any]:
     return {
         "format_version": 1,
         "repository_root": ".",
-        "required_marker_prefix": router_packager.REQUIRED_MARKER_PREFIX,
+        "required_marker_prefix": REQUIRED_MARKER_PREFIX,
         "status": status,
         "helper_artifacts_path": _relative_text(repo_root, manifest_path),
         "checked_artifacts": checked_artifacts,
