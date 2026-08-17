@@ -409,6 +409,9 @@ from marketplace_installer.router_plugin_packager_source import (
 from marketplace_installer.router_plugin_packager_source_projection import (
     verify_source_projection as _verify_source_projection,
 )
+from marketplace_installer.router_plugin_packager_source_projection import (
+    verify_selected_source_inputs as _verify_selected_source_inputs,
+)
 from marketplace_installer.router_plugin_packager_source import (
     collect_skill_sources as _collect_skill_sources_impl,
 )
@@ -1302,6 +1305,14 @@ def _collect_skill_sources(  # noqa: C901
     )
 
 
+def _selected_source_projection_inputs(request: NormalizedRequest) -> list[Path]:
+    selected: list[Path] = []
+    for source in _collect_skill_sources(request).values():
+        selected.append(source["skill_file"])
+        selected.extend(path for path, _relative_path in source["support_files"])
+    return selected
+
+
 def _iter_native_interface_asset_paths(request: NormalizedRequest) -> list[str]:
     return _iter_native_interface_asset_paths_impl(request)
 
@@ -1605,6 +1616,8 @@ def run(command: str, invocation_path: Path, repo_root: Path) -> dict[str, Any]:
         promote_staged_output_for_packager_fn=_promote_staged_output_for_packager,
         promotion_receipt_path_fn=_promotion_receipt_path_impl,
         verify_source_projection_fn=_verify_source_projection,
+        verify_selected_source_inputs_fn=_verify_selected_source_inputs,
+        selected_source_inputs_fn=_selected_source_projection_inputs,
         load_json_bytes_fn=_load_json_bytes,
         hash_bytes_fn=_hash_bytes,
     )

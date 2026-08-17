@@ -105,6 +105,8 @@ def run_packager_with_deps(
     promote_staged_output_for_packager_fn: Any,
     promotion_receipt_path_fn: Any,
     verify_source_projection_fn: Any,
+    verify_selected_source_inputs_fn: Any,
+    selected_source_inputs_fn: Any,
     load_json_bytes_fn: Any,
     hash_bytes_fn: Any,
 ) -> dict[str, Any]:
@@ -117,6 +119,15 @@ def run_packager_with_deps(
         hash_bytes_fn=hash_bytes_fn,
     )
     request = normalize_request_fn(invocation, resolved_repo_root)
+    if source_projection is not None:
+        verify_selected_source_inputs_fn(
+            source_projection, selected_source_inputs_fn(request)
+        )
+        source_projection = {
+            key: value
+            for key, value in source_projection.items()
+            if not key.startswith("_")
+        }
     return execute_packager_command_for_packager_fn(
         command,
         request=request,

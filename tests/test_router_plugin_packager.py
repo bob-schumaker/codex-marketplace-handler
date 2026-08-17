@@ -1912,7 +1912,11 @@ def test_source_projection_receipt_is_verified_on_plan_and_apply(
     tmp_path: Path,
 ) -> None:
     repo = _ponytail_repo(tmp_path)
-    receipt_path = _projection_receipt(repo, [_projection_entry(repo)])
+    entries = [
+        _projection_entry(repo),
+        *_projection_entries_for_tree(repo, repo / "skills"),
+    ]
+    receipt_path = _projection_receipt(repo, entries)
     invocation = _projection_invocation(repo)
 
     planned = packager.run("plan", invocation, repo)
@@ -1923,9 +1927,38 @@ def test_source_projection_receipt_is_verified_on_plan_and_apply(
         == applied["source_projection"]
         == {
             "receipt_digest": f"sha256:{hashlib.sha256(receipt_path.read_bytes()).hexdigest()}",
-            "verified_entry_count": 1,
+            "verified_entry_count": len(entries),
         }
     )
+
+
+def test_source_projection_receipt_must_cover_selected_source_inputs(
+    tmp_path: Path,
+) -> None:
+    repo = _ponytail_repo(tmp_path)
+    _projection_receipt(repo, [_projection_entry(repo)])
+    invocation = _projection_invocation(repo)
+    payload = _load_json(invocation)
+    payload.update({"input_mode": "skill_list", "skill_paths": ["skills/ponytail"]})
+    _write_json(invocation, payload)
+    output = repo / "generated" / "ponytail"
+    output.mkdir(parents=True)
+    sentinel = output / "keep.txt"
+    sentinel.write_text("unchanged\n", encoding="utf-8")
+
+    with pytest.raises(packager.PackagerError) as planned:
+        packager.run("plan", invocation, repo)
+    assert planned.value.error_code == "source_projection_stale"
+    assert planned.value.details["missing_canonical_paths"] == [
+        "skills/ponytail/SKILL.md",
+        "skills/ponytail/references/guide.md",
+        "skills/ponytail/scripts/run.py",
+    ]
+
+    with pytest.raises(packager.PackagerError) as applied:
+        packager.run("apply", invocation, repo)
+    assert applied.value.error_code == "source_projection_stale"
+    assert sentinel.read_text(encoding="utf-8") == "unchanged\n"
 
 
 def _projection_invocation(repo: Path) -> Path:
@@ -1971,6 +2004,23 @@ def _projection_entry(repo: Path) -> dict:
     }
 
 
+def _projection_entries_for_tree(repo: Path, source_root: Path) -> list[dict]:
+    entries: list[dict] = []
+    for canonical in sorted(path for path in source_root.rglob("*") if path.is_file()):
+        relative = canonical.relative_to(repo).as_posix()
+        projected = repo / ".router-plugin-source" / relative
+        projected.parent.mkdir(parents=True, exist_ok=True)
+        projected.write_bytes(canonical.read_bytes())
+        entries.append(
+            {
+                "canonical_path": relative,
+                "projected_path": relative,
+                "sha256": f"sha256:{hashlib.sha256(canonical.read_bytes()).hexdigest()}",
+            }
+        )
+    return sorted(entries, key=lambda entry: entry["canonical_path"])
+
+
 def _native_projection_invocation(repo: Path) -> Path:
     invocation = repo / "native-projection.json"
     _write_json(
@@ -2004,14 +2054,18 @@ def test_source_projection_receipt_is_verified_for_native_routed_plan_and_apply(
     tmp_path: Path,
 ) -> None:
     repo = _native_plugin_repo(tmp_path)
-    receipt = _projection_receipt(repo, [_projection_entry(repo)])
+    entries = [
+        _projection_entry(repo),
+        *_projection_entries_for_tree(repo, repo / "plugins" / "caveman" / "skills"),
+    ]
+    receipt = _projection_receipt(repo, entries)
 
     planned = packager.run("plan", _native_projection_invocation(repo), repo)
     applied = packager.run("apply", _native_projection_invocation(repo), repo)
 
     expected = {
         "receipt_digest": f"sha256:{hashlib.sha256(receipt.read_bytes()).hexdigest()}",
-        "verified_entry_count": 1,
+        "verified_entry_count": len(entries),
     }
     assert planned["source_projection"] == expected
     assert applied["source_projection"] == expected

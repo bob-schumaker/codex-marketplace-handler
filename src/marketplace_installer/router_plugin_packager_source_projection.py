@@ -191,6 +191,7 @@ def verify_source_projection(
             "source_projection_receipt_invalid",
             "receipt entries must be a non-empty list",
         )
+    canonical_paths: set[str] = set()
     previous_path: str | None = None
     for index, entry in enumerate(entries):
         if not isinstance(entry, dict):
@@ -226,6 +227,7 @@ def verify_source_projection(
                 canonical_path=canonical_text,
             )
         previous_path = canonical_text
+        canonical_paths.add(canonical_text)
         canonical_file = _under_root(
             canonical_base, canonical_path, field="canonical_path"
         )
@@ -258,4 +260,29 @@ def verify_source_projection(
     return {
         "receipt_digest": f"sha256:{hash_bytes_fn(raw_receipt)}",
         "verified_entry_count": len(entries),
+        "_canonical_paths": canonical_paths,
+        "_canonical_root": canonical_base,
     }
+
+
+def verify_selected_source_inputs(
+    verification: dict[str, Any], selected_inputs: list[Path]
+) -> None:
+    """Require the receipt to account for every source file the packager reads."""
+    canonical_root = verification["_canonical_root"]
+    canonical_paths = verification["_canonical_paths"]
+    missing: list[str] = []
+    for source_path in selected_inputs:
+        try:
+            canonical_path = source_path.relative_to(canonical_root).as_posix()
+        except ValueError:
+            missing.append(str(source_path))
+            continue
+        if canonical_path not in canonical_paths:
+            missing.append(canonical_path)
+    if missing:
+        _error(
+            "source_projection_stale",
+            "source projection receipt does not cover every selected source input",
+            missing_canonical_paths=sorted(missing),
+        )

@@ -223,7 +223,7 @@
       "mode": "0644",
       "path": "router_plugin_packager_runtime.py",
       "role": "support-module",
-      "sha256": "sha256:444b39621dfc0c1e5567de4a4df4ce1a952d3216d1c87725584db9d84f51533f",
+      "sha256": "sha256:69ea5c1e79c5f7322a0781deab5d6dafd2feb78a6d049f6738349a4ffb9a4ada",
       "source": "marketplace_installer/router_plugin_packager_runtime.py"
     },
     {
@@ -237,7 +237,7 @@
       "mode": "0644",
       "path": "router_plugin_packager_source_projection.py",
       "role": "support-module",
-      "sha256": "sha256:afc141b47e21a6f984a0637bdfd7090f29370fb65ed7c17c9638f601b9b7605c",
+      "sha256": "sha256:d5d972f17a61eeebb1334455f0129f65ef034fc425dd05f5a5ffdb8e4a1be46f",
       "source": "marketplace_installer/router_plugin_packager_source_projection.py"
     },
     {
@@ -265,7 +265,7 @@
       "mode": "0644",
       "path": "router_plugin_packager_engine.py",
       "role": "support-module",
-      "sha256": "sha256:e6cf8d15536df985455d8eea951a78936d9587b03500fd9b1371bb059f250966",
+      "sha256": "sha256:63110893c4d45f39cc8eaa65256e7a687cb79049f73a49021ca5518e444b8053",
       "source": "marketplace_installer/router_plugin_packager_engine.py"
     },
     {
