@@ -216,7 +216,7 @@
       "mode": "0644",
       "path": "router_plugin_packager_release.py",
       "role": "support-module",
-      "sha256": "sha256:3e06720918fb1d7254c81cb6b40302a07a9c5e13ccc1957ce60e1d0ba7ff6493",
+      "sha256": "sha256:c026682196f0c5336f34256d3ca30dede9e819791195a68f54e859e2023a873e",
       "source": "marketplace_installer/router_plugin_packager_release.py"
     },
     {

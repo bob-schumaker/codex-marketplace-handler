@@ -372,8 +372,10 @@ def build_state_payloads(
         "plugin_id": plugin_id,
         "display_name": request.plugin_metadata.display_name,
         "source_root": request.source_root_text,
-        "repository_root": str(request.repository_root),
-        "output_root": str(request.output_root),
+        "repository_root": ".",
+        "output_root": request.output_root.relative_to(
+            request.repository_root
+        ).as_posix(),
         "version": version,
         "packaging_mode": request.plugin_metadata.packaging_mode,
         "skill_ids": request.skill_ids,
@@ -383,7 +385,7 @@ def build_state_payloads(
     }
     bootstrap_state_payload = {
         "format_version": 1,
-        "repository_root": str(request.repository_root),
+        "repository_root": ".",
         "source_root": request.source_root_text,
         "publisher_slug": request.plugin_metadata.publisher_slug,
         "branding_assets": request.plugin_metadata.branding_assets,

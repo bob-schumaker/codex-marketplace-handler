@@ -562,6 +562,15 @@ def test_native_routed_apply_generates_routed_surface_from_native_plugin(
     assert (
         output_root / ".codex-plugin" / "native-routed-decision-record.json"
     ).is_file()
+    bootstrap_state = _load_json(
+        output_root / ".codex-plugin" / "native-routed-bootstrap-state.json"
+    )
+    decision_state = _load_json(
+        output_root / ".codex-plugin" / "native-routed-decision-record.json"
+    )
+    assert bootstrap_state["repository_root"] == "."
+    assert decision_state["repository_root"] == "."
+    assert decision_state["output_root"] == "generated/caveman-routed"
     assert not (repo / ".codex-plugin" / "router-plugin-packager").exists()
     assert (repo / "plugins" / "caveman" / ".codex-plugin" / "plugin.json").read_text(
         encoding="utf-8"
